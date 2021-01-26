@@ -118,8 +118,7 @@ const val MAGIC_PACKAGE_MANAGER = PACKAGE_MANAGER_SENTINEL
 const val ANCESTRAL_RECORD_KEY = "@ancestral_record@"
 const val GLOBAL_METADATA_KEY = "@meta@"
 
-// TODO this doesn't work for LineageOS as they do public debug builds
-fun isDebugBuild() = Build.TYPE == "userdebug"
+fun isDebugBuild() = Build.TYPE == "eng"
 
 fun <T> permitDiskReads(func: () -> T): T {
     return if (isDebugBuild()) {
