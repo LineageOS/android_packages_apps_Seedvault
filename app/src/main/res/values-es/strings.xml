@@ -90,7 +90,6 @@
     <string name="settings_backup_now">Hacer copia de seguridad ahora</string>
     <string name="settings_backup_exclude_apps">Excluir aplicaciones</string>
     <string name="settings_backup_status_summary">Última copia de seguridad: %1$s</string>
-    <string name="settings_backup_status_title">Estado de la copia de seguridad de la aplicación</string>
     <string name="settings_backup_apk_dialog_disable">Deshabilitar la copia de seguridad de la aplicación</string>
     <string name="settings_backup_apk_dialog_message">La copia de seguridad de la aplicación aún desactivada seguirá respaldando los datos de la aplicación. Sin embargo, no se restaurará automáticamente.
 \n
@@ -107,4 +106,9 @@
     <string name="backup">Copia de seguridad</string>
     <string name="notification_success_text">%1$d de %2$d aplicaciones respaldadas. Toque para obtener más información.</string>
     <string name="notification_backup_already_running">Copia de seguridad en progreso</string>
+    <string name="restore_app_not_yet_backed_up">Sin respaldar aún</string>
+    <string name="restore_app_was_stopped">No está respaldado, ya que no se ha usado recientemente</string>
+    <string name="storage_fake_nextcloud_summary_unavailable">Cuenta no disponible. Configure una (o deshabilite la contraseña).</string>
+    <string name="current_destination_string">Estado de la copia de seguridad y ajustes</string>
+    <string name="data_management_label">Copia de seguridad de Seedvault</string>
 </resources>

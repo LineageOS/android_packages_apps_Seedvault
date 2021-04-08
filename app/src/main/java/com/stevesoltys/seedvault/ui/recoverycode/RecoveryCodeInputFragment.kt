@@ -1,8 +1,11 @@
 package com.stevesoltys.seedvault.ui.recoverycode
 
+import android.app.Activity.RESULT_OK
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
 import android.view.View.OnFocusChangeListener
 import android.view.View.VISIBLE
 import android.view.ViewGroup
@@ -12,15 +15,21 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.isDebugBuild
+import com.stevesoltys.seedvault.ui.LiveEventHandler
 import io.github.novacrypto.bip39.Validation.InvalidChecksumException
 import io.github.novacrypto.bip39.Validation.WordNotFoundException
 import io.github.novacrypto.bip39.wordlists.English
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+
+internal const val ARG_FOR_NEW_CODE = "forVerifyingNewCode"
 
 class RecoveryCodeInputFragment : Fragment() {
 
@@ -28,6 +37,7 @@ class RecoveryCodeInputFragment : Fragment() {
 
     private lateinit var introText: TextView
     private lateinit var doneButton: Button
+    private lateinit var newCodeButton: Button
     private lateinit var backView: TextView
     private lateinit var wordLayout1: TextInputLayout
     private lateinit var wordLayout2: TextInputLayout
@@ -43,6 +53,11 @@ class RecoveryCodeInputFragment : Fragment() {
     private lateinit var wordLayout12: TextInputLayout
     private lateinit var wordList: ConstraintLayout
 
+    /**
+     * True if this is for verifying a new recovery code, false for verifying an existing one.
+     */
+    private var forVerifyingNewCode: Boolean = true
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -52,6 +67,7 @@ class RecoveryCodeInputFragment : Fragment() {
 
         introText = v.findViewById(R.id.introText)
         doneButton = v.findViewById(R.id.doneButton)
+        newCodeButton = v.findViewById(R.id.newCodeButton)
         backView = v.findViewById(R.id.backView)
         wordLayout1 = v.findViewById(R.id.wordLayout1)
         wordLayout2 = v.findViewById(R.id.wordLayout2)
@@ -66,6 +82,10 @@ class RecoveryCodeInputFragment : Fragment() {
         wordLayout11 = v.findViewById(R.id.wordLayout11)
         wordLayout12 = v.findViewById(R.id.wordLayout12)
         wordList = v.findViewById(R.id.wordList)
+
+        arguments?.getBoolean(ARG_FOR_NEW_CODE, true)?.let {
+            forVerifyingNewCode = it
+        }
 
         return v
     }
@@ -90,8 +110,14 @@ class RecoveryCodeInputFragment : Fragment() {
             editText.setAdapter(adapter)
         }
         doneButton.setOnClickListener { done() }
+        newCodeButton.visibility = if (forVerifyingNewCode) GONE else VISIBLE
+        newCodeButton.setOnClickListener { generateNewCode() }
 
-        if (isDebugBuild() && !viewModel.isRestore) debugPreFill()
+        viewModel.existingCodeChecked.observeEvent(viewLifecycleOwner,
+            LiveEventHandler { verified -> onExistingCodeChecked(verified) }
+        )
+
+        if (forVerifyingNewCode && isDebugBuild() && !viewModel.isRestore) debugPreFill()
     }
 
     private fun getAdapter(): ArrayAdapter<String> {
@@ -110,7 +136,7 @@ class RecoveryCodeInputFragment : Fragment() {
         val input = getInput()
         if (!allFilledOut(input)) return
         try {
-            viewModel.validateAndContinue(input)
+            viewModel.validateAndContinue(input, forVerifyingNewCode)
         } catch (e: InvalidChecksumException) {
             Toast.makeText(context, R.string.recovery_code_error_checksum_word, LENGTH_LONG).show()
         } catch (e: WordNotFoundException) {
@@ -139,6 +165,52 @@ class RecoveryCodeInputFragment : Fragment() {
             error = errorMsg
             requestFocus()
         }
+    }
+
+    private fun onExistingCodeChecked(verified: Boolean) {
+        AlertDialog.Builder(requireContext()).apply {
+            if (verified) {
+                setTitle(R.string.recovery_code_verification_ok_title)
+                setMessage(R.string.recovery_code_verification_ok_message)
+                setPositiveButton(android.R.string.ok) { dialog, _ -> dialog.dismiss() }
+                setOnDismissListener { parentFragmentManager.popBackStack() }
+            } else {
+                setIcon(R.drawable.ic_warning)
+                setTitle(R.string.recovery_code_verification_error_title)
+                setMessage(R.string.recovery_code_verification_error_message)
+                setPositiveButton(R.string.recovery_code_verification_try_again) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                setNegativeButton(R.string.recovery_code_verification_generate_new) { dialog, _ ->
+                    dialog.dismiss()
+                }
+            }
+        }.show()
+    }
+
+    private val regenRequest = registerForActivityResult(StartActivityForResult()) {
+        if (it.resultCode == RESULT_OK) {
+            viewModel.deleteAllBackup()
+            parentFragmentManager.popBackStack()
+            Snackbar.make(requireView(), R.string.recovery_code_recreated, Snackbar.LENGTH_LONG)
+                .show()
+        }
+    }
+
+    private fun generateNewCode() {
+        AlertDialog.Builder(requireContext())
+            .setIcon(R.drawable.ic_warning)
+            .setTitle(R.string.recovery_code_verification_new_dialog_title)
+            .setMessage(R.string.recovery_code_verification_new_dialog_message)
+            .setPositiveButton(R.string.recovery_code_verification_generate_new) { dialog, _ ->
+                dialog.dismiss()
+                val i = Intent(requireContext(), RecoveryCodeActivity::class.java)
+                regenRequest.launch(i)
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     @Suppress("MagicNumber")

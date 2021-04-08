@@ -24,10 +24,12 @@
     <string name="settings_backup_apk_dialog_message">Disabled app backup will still back up app data. However, it will not get restored automatically.\n\nYou will need to install all your apps manually while having \"Automatic Restore\" switched on.</string>
     <string name="settings_backup_apk_dialog_cancel">Cancel</string>
     <string name="settings_backup_apk_dialog_disable">Disable app backup</string>
-    <string name="settings_backup_status_title">App backup status</string>
+    <string name="settings_backup_status_title">Backup status</string>
     <string name="settings_backup_status_summary">Last backup: %1$s</string>
     <string name="settings_backup_exclude_apps">Exclude apps</string>
     <string name="settings_backup_now">Backup now</string>
+    <string name="settings_backup_recovery_code">Recovery Code</string>
+    <string name="settings_backup_recovery_code_summary">Verify existing code or generate a new one</string>
 
     <!-- Storage -->
     <string name="storage_fragment_backup_title">Choose where to store backups</string>
@@ -53,7 +55,7 @@
     <string name="recovery_code_confirm_button">Confirm code</string>
     <string name="recovery_code_confirm_intro">Enter your 12-word recovery code to ensure that it will work when you need it.</string>
     <string name="recovery_code_input_intro">Enter your 12-word recovery code that you wrote down when setting up backups.</string>
-    <string name="recovery_code_done_button">Done</string>
+    <string name="recovery_code_done_button">Verify</string>
     <string name="recovery_code_input_hint_1">Word 1</string>
     <string name="recovery_code_input_hint_2">Word 2</string>
     <string name="recovery_code_input_hint_3">Word 3</string>
@@ -69,6 +71,15 @@
     <string name="recovery_code_error_empty_word">You forgot to enter this word.</string>
     <string name="recovery_code_error_invalid_word">Wrong word. Did you mean %1$s or %2$s?</string>
     <string name="recovery_code_error_checksum_word">Your code is invalid. Please check all words and try again!</string>
+    <string name="recovery_code_verification_ok_title">Recovery code verified</string>
+    <string name="recovery_code_verification_ok_message">Your code is correct and will work for restoring your backup.</string>
+    <string name="recovery_code_verification_error_title">Incorrect recovery code</string>
+    <string name="recovery_code_verification_error_message">You have entered an invalid recovery code. Please try again!\n\nIf you have lost your code, tap on \'Generate new code\' below.</string>
+    <string name="recovery_code_verification_try_again">Try again</string>
+    <string name="recovery_code_verification_generate_new">Generate new code</string>
+    <string name="recovery_code_verification_new_dialog_title">Wait one second…</string>
+    <string name="recovery_code_verification_new_dialog_message">Generating a new code will make your existing backups inaccessible. We\'ll try to delete them if possible.\n\nAre you sure you want to do this?</string>
+    <string name="recovery_code_recreated">New recovery code has been created successfully</string>
 
     <!-- Notification -->
     <string name="notification_channel_title">Backup notification</string>
@@ -91,21 +102,23 @@
 
     <!-- App Backup and Restore State -->
 
+    <string name="backup_section_system">System apps</string>
     <string name="backup_sms">SMS text messages</string>
     <string name="backup_settings">Device settings</string>
     <string name="backup_call_log">Call history</string>
     <string name="backup_contacts">Local contacts</string>
+    <string name="backup_section_user">Installed apps</string>
     <!-- This text gets shown for apps that the OS did not try to backup for whatever reason e.g. no backup was run yet -->
     <string name="backup_app_not_yet_backed_up">Waiting to back up…</string>
     <string name="restore_app_not_yet_backed_up">Was not yet backed up</string>
     <string name="backup_app_was_stopped">Not backed up as it wasn\'t used recently</string>
     <string name="restore_app_was_stopped">Was not backed up as it hadn\'t been used recently</string>
     <string name="backup_app_no_data">App reported no data for backup</string>
-    <string name="backup_app_not_allowed">App doesn\'t allow backup</string>
     <string name="restore_app_not_allowed">App didn\'t allow backup</string>
     <string name="backup_app_quota_exceeded">Backup quota exceeded</string>
     <string name="restore_app_quota_exceeded">Backup quota was exceeded</string>
     <string name="restore_app_not_installed">App not installed</string>
+    <string name="backup_section_not_allowed">Apps that do not allow data backup</string>
 
     <!-- Restore -->
     <string name="restore_title">Restore from backup</string>

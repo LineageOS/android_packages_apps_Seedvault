@@ -34,7 +34,7 @@ import org.koin.dsl.module
  * @author Steve Soltys
  * @author Torsten Grote
  */
-class App : Application() {
+open class App : Application() {
 
     private val appModule = module {
         single { SettingsManager(this@App) }
@@ -44,7 +44,7 @@ class App : Application() {
         factory { AppListRetriever(this@App, get(), get(), get()) }
 
         viewModel { SettingsViewModel(this@App, get(), get(), get(), get(), get()) }
-        viewModel { RecoveryCodeViewModel(this@App, get()) }
+        viewModel { RecoveryCodeViewModel(this@App, get(), get(), get()) }
         viewModel { BackupStorageViewModel(this@App, get(), get(), get()) }
         viewModel { RestoreStorageViewModel(this@App, get(), get()) }
         viewModel { RestoreViewModel(this@App, get(), get(), get(), get(), get()) }
@@ -52,22 +52,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        startKoin {
-            androidLogger()
-            androidContext(this@App)
-            modules(
-                listOf(
-                    cryptoModule,
-                    headerModule,
-                    metadataModule,
-                    documentsProviderModule, // storage plugin
-                    backupModule,
-                    restoreModule,
-                    installModule,
-                    appModule
-                )
-            )
-        }
+        startKoin()
         if (isDebugBuild()) {
             StrictMode.setThreadPolicy(
                 StrictMode.ThreadPolicy.Builder()
@@ -86,6 +71,23 @@ class App : Application() {
         permitDiskReads {
             migrateTokenFromMetadataToSettingsManager()
         }
+    }
+
+    protected open fun startKoin() = startKoin {
+        androidLogger()
+        androidContext(this@App)
+        modules(
+            listOf(
+                cryptoModule,
+                headerModule,
+                metadataModule,
+                documentsProviderModule, // storage plugin
+                backupModule,
+                restoreModule,
+                installModule,
+                appModule
+            )
+        )
     }
 
     private val settingsManager: SettingsManager by inject()
@@ -111,6 +113,7 @@ const val MAGIC_PACKAGE_MANAGER = PACKAGE_MANAGER_SENTINEL
 const val ANCESTRAL_RECORD_KEY = "@ancestral_record@"
 const val GLOBAL_METADATA_KEY = "@meta@"
 
+// TODO this doesn't work for LineageOS as they do public debug builds
 fun isDebugBuild() = Build.TYPE == "userdebug"
 
 fun <T> permitDiskReads(func: () -> T): T {

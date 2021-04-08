@@ -1,5 +1,5 @@
 # Seedvault
-[![Build Status](https://travis-ci.com/stevesoltys/seedvault.svg?branch=master)](https://travis-ci.com/stevesoltys/seedvault)
+[![Build](https://github.com/seedvault-app/seedvault/workflows/Build/badge.svg?branch=master)](https://github.com/seedvault-app/seedvault/actions?query=branch%3Amaster+workflow%3ABuild)
 
 A backup application for the [Android Open Source Project](https://source.android.com/).
 
@@ -33,7 +33,7 @@ It uses the same internal APIs as `adb backup` which is deprecated and thus need
 * `android.permission.MANAGE_DOCUMENTS` to retrieve the available storage roots (optional) for better UX.
 
 ## Contributing
-Bug reports and pull requests are welcome on GitHub at https://github.com/stevesoltys/seedvault.
+Bug reports and pull requests are welcome on GitHub at https://github.com/seedvault-app/seedvault.
 
 This project aims to adhere to the [official Kotlin coding style](https://developer.android.com/kotlin/style-guide).
 
