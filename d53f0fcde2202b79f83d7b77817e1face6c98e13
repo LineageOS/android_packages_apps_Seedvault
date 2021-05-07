@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc7405a6_66e855e1",
+        "filename": "app/src/main/java/com/stevesoltys/seedvault/settings/SettingsFragment.kt",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 15060
+      },
+      "writtenOn": "2021-05-07T13:16:31Z",
+      "side": 0,
+      "message": "don\u0027t know if this should be staying or if the removal is fine",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 4,
+        "endChar": 45
+      },
+      "revId": "d53f0fcde2202b79f83d7b77817e1face6c98e13",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
