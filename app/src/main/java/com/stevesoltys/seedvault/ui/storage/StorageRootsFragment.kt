@@ -46,7 +46,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
     private lateinit var divider: View
     private lateinit var listView: RecyclerView
     private lateinit var progressBar: ProgressBar
-    private lateinit var backView: TextView
+    private lateinit var skipView: TextView
 
     private val adapter by lazy { StorageRootAdapter(viewModel.isRestoreOperation, this) }
 
@@ -63,7 +63,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
         divider = v.findViewById(R.id.divider)
         listView = v.findViewById(R.id.listView)
         progressBar = v.findViewById(R.id.progressBar)
-        backView = v.findViewById(R.id.backView)
+        skipView = v.findViewById(R.id.skipView)
 
         return v
     }
@@ -79,8 +79,8 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
 
         if (viewModel.isRestoreOperation) {
             titleView.text = getString(R.string.storage_fragment_restore_title)
-            backView.visibility = VISIBLE
-            backView.setOnClickListener { requireActivity().finishAfterTransition() }
+            skipView.visibility = VISIBLE
+            skipView.setOnClickListener { requireActivity().finishAfterTransition() }
         } else {
             warningIcon.visibility = VISIBLE
             warningText.visibility = VISIBLE
