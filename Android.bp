@@ -31,6 +31,7 @@ android_app {
         "androidx.lifecycle_lifecycle-livedata-ktx",
         "androidx-constraintlayout_constraintlayout",
         "com.google.android.material_material",
+        "setupcompat",
         // storage
         "seedvault-lib-storage", // did not manage to add this as transitive dependency
         "seedvault-lib-tink-android",
