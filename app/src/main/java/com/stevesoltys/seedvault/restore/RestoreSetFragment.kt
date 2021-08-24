@@ -22,7 +22,6 @@ class RestoreSetFragment : Fragment() {
     private lateinit var listView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var errorView: TextView
-    private lateinit var backView: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -34,7 +33,6 @@ class RestoreSetFragment : Fragment() {
         listView = v.findViewById(R.id.listView)
         progressBar = v.findViewById(R.id.progressBar)
         errorView = v.findViewById(R.id.errorView)
-        backView = v.findViewById(R.id.backView)
 
         return v
     }
@@ -48,8 +46,6 @@ class RestoreSetFragment : Fragment() {
         viewModel.restoreSetResults.observe(viewLifecycleOwner, Observer { result ->
             onRestoreResultsLoaded(result)
         })
-
-        backView.setOnClickListener { requireActivity().finishAfterTransition() }
     }
 
     override fun onStart() {
