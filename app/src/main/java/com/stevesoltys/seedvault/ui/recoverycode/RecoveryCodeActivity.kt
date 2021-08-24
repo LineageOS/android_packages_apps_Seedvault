@@ -16,8 +16,6 @@ class RecoveryCodeActivity : BackupActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (isSetupWizard()) hideSystemUiNavigation()
-
         setContentView(R.layout.activity_recovery_code)
 
         viewModel.isRestore = isRestore()
@@ -63,10 +61,6 @@ class RecoveryCodeActivity : BackupActivity() {
 
     private fun isRestore(): Boolean {
         return intent?.getBooleanExtra(INTENT_EXTRA_IS_RESTORE, false) ?: false
-    }
-
-    private fun isSetupWizard(): Boolean {
-        return intent?.getBooleanExtra(INTENT_EXTRA_IS_SETUP_WIZARD, false) ?: false
     }
 
 }
