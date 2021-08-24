@@ -2,6 +2,7 @@ package com.stevesoltys.seedvault.ui.storage
 
 import android.Manifest.permission.MANAGE_DOCUMENTS
 import android.annotation.SuppressLint
+import android.app.Activity;
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
@@ -26,6 +27,8 @@ import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.ui.INTENT_EXTRA_IS_RESTORE
 import org.koin.androidx.viewmodel.ext.android.getSharedViewModel
 
+import com.google.android.setupcompat.util.ResultCodes.RESULT_SKIP;
+
 internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
 
     companion object {
@@ -46,7 +49,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
     private lateinit var divider: View
     private lateinit var listView: RecyclerView
     private lateinit var progressBar: ProgressBar
-    private lateinit var backView: TextView
+    private lateinit var skipView: TextView
 
     private val adapter by lazy { StorageRootAdapter(viewModel.isRestoreOperation, this) }
 
@@ -63,7 +66,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
         divider = v.findViewById(R.id.divider)
         listView = v.findViewById(R.id.listView)
         progressBar = v.findViewById(R.id.progressBar)
-        backView = v.findViewById(R.id.backView)
+        skipView = v.findViewById(R.id.skipView)
 
         return v
     }
@@ -79,8 +82,11 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
 
         if (viewModel.isRestoreOperation) {
             titleView.text = getString(R.string.storage_fragment_restore_title)
-            backView.visibility = VISIBLE
-            backView.setOnClickListener { requireActivity().finishAfterTransition() }
+            skipView.visibility = VISIBLE
+            skipView.setOnClickListener {
+                requireActivity().setResult(RESULT_SKIP);
+                requireActivity().finishAfterTransition();
+            }
         } else {
             warningIcon.visibility = VISIBLE
             warningText.visibility = VISIBLE
