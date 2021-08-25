@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f78d6da7_e070535b",
+        "filename": "app/src/main/java/com/stevesoltys/seedvault/ui/BackupActivity.kt",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2021-08-25T13:25:47Z",
+      "side": 1,
+      "message": "Can get rid of this",
+      "revId": "c996b79f16b03a4a8cb96b6b84a022dfac49a9f7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "01d44530_9fef1328",
+        "filename": "app/src/main/java/com/stevesoltys/seedvault/ui/recoverycode/RecoveryCodeActivity.kt",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2021-08-25T13:25:47Z",
+      "side": 1,
+      "message": "And this.",
+      "revId": "c996b79f16b03a4a8cb96b6b84a022dfac49a9f7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
