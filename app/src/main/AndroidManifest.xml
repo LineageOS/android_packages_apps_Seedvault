@@ -63,7 +63,7 @@
 
         <activity
             android:name=".ui.storage.StorageActivity"
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SudThemeGlifV3.Light" />
 
         <activity
             android:name=".ui.storage.PermissionGrantActivity"
@@ -79,7 +79,7 @@
             android:name=".restore.RestoreActivity"
             android:exported="true"
             android:label="@string/restore_title"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/SudThemeGlifV3.Light">
             <intent-filter>
                 <action android:name="com.stevesoltys.seedvault.RESTORE_BACKUP" />
                 <category android:name="android.intent.category.DEFAULT" />
