@@ -14,6 +14,7 @@ import android.view.View
 import android.view.View.INVISIBLE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -22,6 +23,7 @@ import androidx.annotation.RequiresPermission
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.setupdesign.GlifLayout
 import com.google.android.setupcompat.util.ResultCodes.RESULT_SKIP
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.ui.INTENT_EXTRA_IS_RESTORE
@@ -40,14 +42,14 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
         }
     }
 
+    private lateinit var suw_layout: GlifLayout
     private lateinit var viewModel: StorageViewModel
-    private lateinit var titleView: TextView
     private lateinit var warningIcon: ImageView
     private lateinit var warningText: TextView
     private lateinit var divider: View
     private lateinit var listView: RecyclerView
     private lateinit var progressBar: ProgressBar
-    private lateinit var skipView: TextView
+    private lateinit var skipView: Button
 
     private val adapter by lazy { StorageRootAdapter(viewModel.isRestoreOperation, this) }
 
@@ -58,7 +60,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
     ): View? {
         val v: View = inflater.inflate(R.layout.fragment_storage_root, container, false)
 
-        titleView = v.findViewById(R.id.titleView)
+        suw_layout = v.findViewById(R.id.setup_wizard_layout)
         warningIcon = v.findViewById(R.id.warningIcon)
         warningText = v.findViewById(R.id.warningText)
         divider = v.findViewById(R.id.divider)
@@ -79,7 +81,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
         }
 
         if (viewModel.isRestoreOperation) {
-            titleView.text = getString(R.string.storage_fragment_restore_title)
+            suw_layout.setHeaderText(R.string.restore_restoring)
             skipView.visibility = VISIBLE
             skipView.setOnClickListener {
                 requireActivity().setResult(RESULT_SKIP)
