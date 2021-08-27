@@ -42,7 +42,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
     }
 
     private lateinit var viewModel: StorageViewModel
-    private lateinit var titleView: TextView
+    //private lateinit var titleView: TextView
     private lateinit var warningIcon: ImageView
     private lateinit var warningText: TextView
     private lateinit var divider: View
@@ -59,7 +59,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
     ): View? {
         val v: View = inflater.inflate(R.layout.fragment_storage_root, container, false)
 
-        titleView = v.findViewById(R.id.titleView)
+        //titleView = v.findViewById(R.id.titleView)
         warningIcon = v.findViewById(R.id.warningIcon)
         warningText = v.findViewById(R.id.warningText)
         divider = v.findViewById(R.id.divider)
@@ -80,7 +80,7 @@ internal class StorageRootsFragment : Fragment(), StorageRootClickedListener {
         }
 
         if (viewModel.isRestoreOperation) {
-            titleView.text = getString(R.string.storage_fragment_restore_title)
+            //titleView.text = getString(R.string.storage_fragment_restore_title)
             skipView.visibility = VISIBLE
             skipView.setOnClickListener {
                 requireActivity().setResult(RESULT_SKIP);
