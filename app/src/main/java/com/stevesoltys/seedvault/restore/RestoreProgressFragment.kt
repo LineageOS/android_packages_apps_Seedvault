@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager.VERTICAL
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.setupdesign.GlifLayout
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.ui.AppBackupState.FAILED_NOT_INSTALLED
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
@@ -28,8 +29,8 @@ class RestoreProgressFragment : Fragment() {
     private val layoutManager = LinearLayoutManager(context)
     private val adapter = RestoreProgressAdapter()
 
+    private lateinit var suw_layout: GlifLayout
     private lateinit var progressBar: ProgressBar
-    private lateinit var titleView: TextView
     private lateinit var backupNameView: TextView
     private lateinit var appList: RecyclerView
     private lateinit var button: Button
@@ -41,8 +42,8 @@ class RestoreProgressFragment : Fragment() {
     ): View? {
         val v: View = inflater.inflate(R.layout.fragment_restore_progress, container, false)
 
+        suw_layout = v.findViewById(R.id.setup_wizard_layout)
         progressBar = v.findViewById(R.id.progressBar)
-        titleView = v.findViewById(R.id.titleView)
         backupNameView = v.findViewById(R.id.backupNameView)
         appList = v.findViewById(R.id.appList)
         button = v.findViewById(R.id.button)
@@ -51,7 +52,7 @@ class RestoreProgressFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        titleView.setText(R.string.restore_restoring)
+        suw_layout.setHeaderText(R.string.restore_restoring)
 
         appList.apply {
             layoutManager = this@RestoreProgressFragment.layoutManager
