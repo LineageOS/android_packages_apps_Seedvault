@@ -25,7 +25,6 @@ import cash.z.ecc.android.bip39.Mnemonics.InvalidWordException
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputLayout
 import com.stevesoltys.seedvault.R
-import com.stevesoltys.seedvault.isDebugBuild
 import com.stevesoltys.seedvault.ui.LiveEventHandler
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import java.util.Locale
@@ -119,7 +118,7 @@ class RecoveryCodeInputFragment : Fragment() {
             LiveEventHandler { verified -> onExistingCodeChecked(verified) }
         )
 
-        if (forVerifyingNewCode && isDebugBuild() && !viewModel.isRestore) debugPreFill()
+        if (forVerifyingNewCode && !viewModel.isRestore) debugPreFill()
     }
 
     private fun getInput(): List<CharSequence> = ArrayList<String>(WORD_NUM).apply {
