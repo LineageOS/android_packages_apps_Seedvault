@@ -3,7 +3,7 @@
     <string name="restore_backup_button">Restaurar backup</string>
     <string name="current_destination_string">Status do backup e configurações</string>
     <string name="backup">Backup</string>
-    <string name="about_source_code">Código Fonte: https://github.com/stevesoltys/seedvault</string>
+    <string name="about_source_code">Código Fonte: https://github.com/seedvault-app/seedvault</string>
     <string name="about_sponsor">Patrocinado por: <a href="https://www.calyxinstitute.org">Calyx Institute</a> para uso no <a href="https://calyxos.org">CalyxOS</a></string>
     <string name="about_design">Design por: <a href="https://www.glennsorrentino.com/">Glenn Sorrentino</a></string>
     <string name="about_author">Escrito por: <a href="https://github.com/stevesoltys">Steve Soltys</a> e <a href="https://blog.grobox.de">Torsten Grote</a></string>
@@ -68,7 +68,7 @@
     <string name="notification_backup_already_running">Backup em andamento</string>
     <string name="notification_channel_title">Notificação de backup</string>
     <string name="recovery_code_error_checksum_word">O seu código é inválido. Por favor, verifique todas as palavras e tente novamente!</string>
-    <string name="recovery_code_error_invalid_word">Palavra errada. Quis dizer %1$s ou %2$s\?</string>
+    <string name="recovery_code_error_invalid_word">Palavra errada.</string>
     <string name="recovery_code_error_empty_word">Se esqueceu de inserir esta palavra.</string>
     <string name="recovery_code_input_hint_12">Palavra 12</string>
     <string name="recovery_code_input_hint_11">Palavra 11</string>

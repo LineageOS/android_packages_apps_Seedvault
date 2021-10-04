@@ -42,6 +42,10 @@
     <string name="settings_backup_storage_code_dialog_message">To enable storage backup, you need to first verify your recovery code or generate a new one.</string>
     <string name="settings_backup_storage_code_dialog_ok">Verify code</string>
 
+    <string name="settings_expert_title">Expert settings</string>
+    <string name="settings_expert_quota_title">Unlimited app quota</string>
+    <string name="settings_expert_quota_summary">Do not impose a limitation on the size of app backups.\n\nWarning: This can fill up your storage location quickly. Not needed for most apps.</string>
+
     <!-- Storage Location -->
     <string name="storage_fragment_backup_title">Choose where to store backups</string>
     <string name="storage_fragment_restore_title">Where to find your backups?</string>
@@ -54,6 +58,7 @@
     <string name="storage_fake_nextcloud_summary">Tap to install</string>
     <string name="storage_fake_nextcloud_summary_installed">Tap to set up account</string>
     <string name="storage_fake_nextcloud_summary_unavailable">Account not available. Set one up (or disable passcode).</string>
+    <string name="storage_fake_nextcloud_summary_unavailable_market">Not installed</string>
     <string name="storage_check_fragment_backup_title">Initializing backup location…</string>
     <string name="storage_check_fragment_patience">This may take some time…</string>
     <string name="storage_check_fragment_restore_title">Looking for backups…</string>
@@ -93,6 +98,8 @@
     <string name="recovery_code_verification_new_dialog_title">Wait one second…</string>
     <string name="recovery_code_verification_new_dialog_message">Generating a new code will make your existing backups inaccessible. We\'ll try to delete them if possible.\n\nAre you sure you want to do this?</string>
     <string name="recovery_code_recreated">New recovery code has been created successfully</string>
+    <string name="recovery_code_auth_title">Re-enter your screen lock</string>
+    <string name="recovery_code_auth_description">Enter your device credentials to continue</string>
 
     <!-- Notification -->
     <string name="notification_channel_title">Backup notification</string>

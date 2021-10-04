@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="about_source_code">Zdrojový kód: https://github.com/stevesoltys/seedvault</string>
+    <string name="about_source_code">Zdrojový kód: https://github.com/seedvault-app/seedvault</string>
     <string name="about_sponsor">Sponzorováno: <a href="https://www.calyxinstitute.org">Calyx Institute</a> pro použití v <a href="https://calyxos.org">CalyxOS</a></string>
     <string name="about_design">Design: <a href="https://www.glennsorrentino.com/">Glenn Sorrentino</a></string>
     <string name="about_author">Autoři: <a href="https://github.com/stevesoltys"> Steve Soltys </a> a <a href="https://blog.grobox.de"> Torsten Grote </a></string>
@@ -82,7 +82,7 @@
     <string name="recovery_code_verification_ok_message">Váš kód je správný a bude fungovat pro obnovení zálohy.</string>
     <string name="recovery_code_verification_ok_title">Obnovovací kód ověřen</string>
     <string name="recovery_code_error_checksum_word">Váš kód je neplatný. Zkontrolujte prosím všechna slova a zkuste to znovu!</string>
-    <string name="recovery_code_error_invalid_word">Chybné slovo. Mysleli jste %1$s nebo %2$s\?</string>
+    <string name="recovery_code_error_invalid_word">Chybné slovo.</string>
     <string name="recovery_code_error_empty_word">Zapomněli jste zadat toto slovo.</string>
     <string name="recovery_code_input_hint_12">12. slovo</string>
     <string name="recovery_code_input_hint_11">11. slovo</string>
