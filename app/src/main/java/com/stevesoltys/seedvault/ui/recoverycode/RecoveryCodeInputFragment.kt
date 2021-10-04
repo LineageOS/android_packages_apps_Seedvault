@@ -1,8 +1,14 @@
 package com.stevesoltys.seedvault.ui.recoverycode
 
 import android.app.Activity.RESULT_OK
+import android.app.KeyguardManager
 import android.content.Intent
+import android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import android.hardware.biometrics.BiometricPrompt
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
@@ -16,8 +22,10 @@ import android.widget.TextView
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat.getMainExecutor
 import androidx.fragment.app.Fragment
 import cash.z.ecc.android.bip39.Mnemonics
 import cash.z.ecc.android.bip39.Mnemonics.ChecksumException
@@ -30,7 +38,7 @@ import com.stevesoltys.seedvault.ui.LiveEventHandler
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import java.util.Locale
 
-internal const val ARG_FOR_NEW_CODE = "forVerifyingNewCode"
+internal const val ARG_FOR_NEW_CODE = "forStoringNewCode"
 
 class RecoveryCodeInputFragment : Fragment() {
 
@@ -56,7 +64,7 @@ class RecoveryCodeInputFragment : Fragment() {
     /**
      * True if this is for verifying a new recovery code, false for verifying an existing one.
      */
-    private var forVerifyingNewCode: Boolean = true
+    private var forStoringNewCode: Boolean = true
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -83,7 +91,7 @@ class RecoveryCodeInputFragment : Fragment() {
         wordList = v.findViewById(R.id.wordList)
 
         arguments?.getBoolean(ARG_FOR_NEW_CODE, true)?.let {
-            forVerifyingNewCode = it
+            forStoringNewCode = it
         }
 
         return v
@@ -112,14 +120,14 @@ class RecoveryCodeInputFragment : Fragment() {
             editText.setAdapter(adapter)
         }
         doneButton.setOnClickListener { done() }
-        newCodeButton.visibility = if (forVerifyingNewCode) GONE else VISIBLE
+        newCodeButton.visibility = if (forStoringNewCode) GONE else VISIBLE
         newCodeButton.setOnClickListener { generateNewCode() }
 
         viewModel.existingCodeChecked.observeEvent(viewLifecycleOwner,
             LiveEventHandler { verified -> onExistingCodeChecked(verified) }
         )
 
-        if (forVerifyingNewCode && isDebugBuild() && !viewModel.isRestore) debugPreFill()
+        if (forStoringNewCode && isDebugBuild() && !viewModel.isRestore) debugPreFill()
     }
 
     private fun getInput(): List<CharSequence> = ArrayList<String>(WORD_NUM).apply {
@@ -130,12 +138,43 @@ class RecoveryCodeInputFragment : Fragment() {
         val input = getInput()
         if (!allFilledOut(input)) return
         try {
-            viewModel.validateAndContinue(input, forVerifyingNewCode)
+            viewModel.validateCode(input)
         } catch (e: ChecksumException) {
             Toast.makeText(context, R.string.recovery_code_error_checksum_word, LENGTH_LONG).show()
+            return
         } catch (e: InvalidWordException) {
             showWrongWordError(input)
+            return
         }
+        if (forStoringNewCode) {
+            val keyguardManager = requireContext().getSystemService(KeyguardManager::class.java)
+            if (SDK_INT >= 30 && keyguardManager.isDeviceSecure) {
+                // if we have a lock-screen secret, we can ask for it before storing the code
+                storeNewCodeAfterAuth(input)
+            } else {
+                // user doesn't seem to care about security, store key without auth
+                viewModel.storeNewCode(input)
+            }
+        } else {
+            viewModel.verifyExistingCode(input)
+        }
+    }
+
+    @RequiresApi(30)
+    private fun storeNewCodeAfterAuth(input: List<CharSequence>) {
+        val biometricPrompt = BiometricPrompt.Builder(context)
+            .setConfirmationRequired(true)
+            .setTitle(getString(R.string.recovery_code_auth_title))
+            .setDescription(getString(R.string.recovery_code_auth_description))
+            // BIOMETRIC_STRONG could be made optional in the future, setting guarded by credentials
+            .setAllowedAuthenticators(DEVICE_CREDENTIAL or BIOMETRIC_STRONG)
+            .build()
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                viewModel.storeNewCode(input)
+            }
+        }
+        biometricPrompt.authenticate(CancellationSignal(), getMainExecutor(context), callback)
     }
 
     private fun allFilledOut(input: List<CharSequence>): Boolean {

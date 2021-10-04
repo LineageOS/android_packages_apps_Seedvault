@@ -220,15 +220,45 @@ followed by a second type byte depending on the type of file written:
 The chunk ID and the backup snapshot timestamp get added
 to prevent an attacker from renaming and swapping files/chunks.
 
+## Key derivation overview
+
+The original entropy comes from a BIP39 seed (12 words = 128 bit size)
+obtained from Java's `SecureRandom`.
+A PBKDF SHA512 based derivation defined in BIP39 turns this into a 512 bit seed key.
+
+The derived seed key (512 bit size) gets split into two parts:
+1. app data encryption key - 256 bit - first half of seed key
+    * used to encrypt app data retrieved from AOSP
+    * locked in Android's key store for this usage
+    * device needs to be unlocked for decryption
+    * usage deprecated, should not be used for other operations
+2. main key - 256 bit - second half of seed key used to derive application specific keys:
+    1. HKDF with info "stream key"
+         * this stream key is then used to derive a new key for each stream
+         * the tink library will create various new subkeys based on salt/nonce/counter
+    2. HKDF with info "Chunk ID calculation"
+         * used to generate deterministic hashes (HMAC-SHA256) over the chunk contents
+           without leaking information about the file contents to third parties
+
 # Data structures
 
 ## Local caches
 
+The local cache is implemented as a sqlite-based Room database
+which had shown promising performance in early tests.
+
+Most information in the cache is considered public knowledge
+also available to an attacker with access to the local filesystem
+(with root access or file management permission).
+Still, the cache data can only be accessed by the owning backup application
+and can not be accessed by other apps unless the attacker obtains root access
+or is otherwise able to break Android's security model.
+In that later case, the attacker will be able to access all files anyway
+making access to the cache worthless.
+
 ### Files cache
 
 This cache is needed to quickly look up if a file has changed and if we have all of its chunks.
-It is implemented as a sqlite-based Room database
-which had shown promising performance in early tests.
 
 Contents:
 
