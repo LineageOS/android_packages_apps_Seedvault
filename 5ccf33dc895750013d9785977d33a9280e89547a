@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1cd76d9b_05d1558d",
+        "filename": "Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2021-10-13T16:34:43Z",
+      "side": 1,
+      "message": "These will need to be added to gradle build for upstream.\n\nhttps://review.calyxos.org/c/CalyxOS/platform_packages_apps_Firewall/+/3627/2/gradle/dependencies.gradle works for SettingsLib (i.e. same approach as existing libs), we can probably do something similar for the two setup libs.",
+      "revId": "5ccf33dc895750013d9785977d33a9280e89547a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
