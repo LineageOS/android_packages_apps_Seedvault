@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b8a0841c_43979239",
+        "filename": "Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2021-10-13T16:35:02Z",
+      "side": 1,
+      "message": "Should be added to gradle build",
+      "revId": "0a8269a92a3c991033a78d35f0854d8c3fbf51d7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
