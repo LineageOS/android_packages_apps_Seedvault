@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad082b1b_c189461f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2021-12-31T23:35:01Z",
+      "side": 1,
+      "message": "Upstream PR: https://github.com/seedvault-app/seedvault/pull/353\n\nUnfortunately gradle build fails to find the various setupdesign resources.",
+      "revId": "c4b985b6dbcec77f3d8701a116a738a9a0bae716",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
