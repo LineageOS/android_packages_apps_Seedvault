@@ -23,6 +23,7 @@ abstract class RequireProvisioningActivity : BackupActivity() {
 
     private val recoveryCodeRequest =
         registerForActivityResult(StartActivityForResult()) { result ->
+            setResult(result.resultCode)
             if (result.resultCode != RESULT_OK) {
                 Log.w(TAG, "Error in activity result for requesting recovery code")
                 if (!getViewModel().recoveryCodeIsSet()) {
@@ -32,6 +33,7 @@ abstract class RequireProvisioningActivity : BackupActivity() {
         }
     private val requestLocation =
         registerForActivityResult(StartActivityForResult()) { result ->
+            setResult(result.resultCode)
             if (result.resultCode != RESULT_OK) {
                 Log.w(TAG, "Error in activity result for requesting location")
                 if (!getViewModel().validLocationIsSet()) {
@@ -55,16 +57,18 @@ abstract class RequireProvisioningActivity : BackupActivity() {
     }
 
     protected fun showStorageActivity() {
-        val intent = Intent(this, StorageActivity::class.java)
-        intent.putExtra(INTENT_EXTRA_IS_RESTORE, getViewModel().isRestoreOperation)
-        intent.putExtra(INTENT_EXTRA_IS_SETUP_WIZARD, isSetupWizard)
+        val intent = Intent(this, StorageActivity::class.java).apply {
+            putExtra(INTENT_EXTRA_IS_RESTORE, getViewModel().isRestoreOperation)
+            putExtra(INTENT_EXTRA_IS_SETUP_WIZARD, isSetupWizard)
+        }
         requestLocation.launch(intent)
     }
 
     protected fun showRecoveryCodeActivity() {
-        val intent = Intent(this, RecoveryCodeActivity::class.java)
-        intent.putExtra(INTENT_EXTRA_IS_RESTORE, getViewModel().isRestoreOperation)
-        intent.putExtra(INTENT_EXTRA_IS_SETUP_WIZARD, isSetupWizard)
+        val intent = Intent(this, RecoveryCodeActivity::class.java).apply {
+            putExtra(INTENT_EXTRA_IS_RESTORE, getViewModel().isRestoreOperation)
+            putExtra(INTENT_EXTRA_IS_SETUP_WIZARD, isSetupWizard)
+        }
         recoveryCodeRequest.launch(intent)
     }
 
