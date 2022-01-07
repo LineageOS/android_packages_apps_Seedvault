@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "b8a0841c_43979239",
         "filename": "Android.bp",
@@ -14,8 +15,25 @@
       "side": 1,
       "message": "Should be added to gradle build",
       "revId": "0a8269a92a3c991033a78d35f0854d8c3fbf51d7",
-      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
-      "unresolved": true
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d8410e8_4709767c",
+        "filename": "Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2022-01-07T18:36:19Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "b8a0841c_43979239",
+      "revId": "0a8269a92a3c991033a78d35f0854d8c3fbf51d7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
