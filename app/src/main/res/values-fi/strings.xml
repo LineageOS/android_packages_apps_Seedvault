@@ -35,7 +35,7 @@
 \n
 \nValitse toinen sijainti, joka sisältää %s-kansion.</string>
     <string name="restore_invalid_location_title">Varmuuskopioita ei löytynyt</string>
-    <string name="restore_back">Älä palauta</string>
+    <string name="restore_skip">Älä palauta</string>
     <string name="restore_restore_set_times">Viimeinen varmuuskopio %1$s · Ensimmäinen %2$s.</string>
     <string name="restore_choose_restore_set">Valitse palautettava varmuuskopio</string>
     <string name="restore_title">Palauta varmuuskopiosta</string>
@@ -125,7 +125,7 @@
     <string name="settings_backup_last_backup_never">Ei koskaan</string>
     <string name="settings_backup_location_none">Ei määritelty</string>
     <string name="settings_backup_location">Varmuuskopioinnin sijainti</string>
-    <string name="settings_backup">Varmuuskopioi tietoni</string>
+    <string name="settings_backup">Varmuuskopioi sovellukseni</string>
     <string name="restore_backup_button">Palauta varmuuskopio</string>
     <string name="current_destination_string">Varmuuskopioinnin tila ja asetukset</string>
     <string name="data_management_label">Seedvault Varmuuskopio</string>
@@ -145,4 +145,30 @@
     <string name="recovery_code_verification_ok_title">Palautuskoodi vahvistettu</string>
     <string name="settings_backup_recovery_code_summary">Vahvista olemassa oleva koodi tai luo uusi</string>
     <string name="settings_backup_recovery_code">Palautuskoodi</string>
+    <string name="settings_category_storage">Tallennustilan varmuuskopiointi (kokeellinen)</string>
+    <string name="settings_backup_storage_title">Varmuuskopioi tiedostoni</string>
+    <string name="settings_category_apps">Sovelluksen varmuuskopiointi</string>
+    <string name="settings_backup_files_title">Sisällytetyt tiedostot ja kansiot</string>
+    <string name="settings_backup_files_summary">Ei mitään</string>
+    <string name="settings_backup_storage_dialog_title">Kokeellinen ominaisuus</string>
+    <string name="storage_fragment_warning_delete">Tässä sijainnissa olevat varmuuskopiot poistetaan.</string>
+    <string name="settings_backup_storage_dialog_message">Tiedostojen varmuuskopiointi on vielä kokeiluasteella, eikä se välttämättä toimi. Älä luota siihen tärkeiden tietojen osalta.</string>
+    <string name="storage_check_fragment_patience">Tämä voi kestää jonkin aikaa…</string>
+    <string name="restore_storage_in_progress_title">Tiedostoja palautetaan…</string>
+    <string name="settings_backup_storage_dialog_ok">Ota käyttöön joka tapauksessa</string>
+    <string name="settings_expert_quota_title">Rajoittamaton sovelluskiintiö</string>
+    <string name="settings_expert_title">Asiantuntija-asetukset</string>
+    <string name="restore_skip_apps">Ohita sovellusten palauttaminen</string>
+    <string name="restore_storage_skip">Ohita tiedostojen palauttaminen</string>
+    <string name="restore_storage_choose_snapshot">Valitse palautettava tallennustilan varmuuskopio (kokeellinen)</string>
+    <string name="restore_storage_in_progress_info">Tiedostojasi palautetaan taustalla. Voit aloittaa puhelimen käytön sen ollessa käynnissä.
+\n
+\nJotkin sovellukset (esim. Signal tai WhatsApp) saattavat vaatia tiedostojen täydellistä palauttamista varmuuskopion tuomiseksi. Yritä välttää näiden sovellusten käynnistämistä ennen kuin tiedoston palautus ei ole valmis.</string>
+    <string name="restore_storage_got_it">Sain sen</string>
+    <string name="storage_fake_nextcloud_summary_unavailable_market">Ei asennettu</string>
+    <string name="recovery_code_auth_title">Syötä näytön lukitus uudelleen</string>
+    <string name="recovery_code_auth_description">Jatka kirjoittamalla laitteesi tunnistetiedot</string>
+    <string name="settings_expert_quota_summary">Älä aseta rajoituksia sovellusten varmuuskopioiden koolle.
+\n
+\nVaroitus: Tämä voi täyttää tallennustilan nopeasti. Ei tarvita useimmissa sovelluksissa.</string>
 </resources>
