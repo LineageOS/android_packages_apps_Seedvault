@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
 import android.widget.Button
+import android.widget.LinearLayout.SHOW_DIVIDER_NONE
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -13,7 +14,6 @@ import androidx.core.content.ContextCompat.getColor
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager.VERTICAL
 import androidx.recyclerview.widget.RecyclerView
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.ui.AppBackupState.FAILED_NOT_INSTALLED
@@ -54,7 +54,7 @@ class RestoreProgressFragment : Fragment() {
         appList.apply {
             layoutManager = this@RestoreProgressFragment.layoutManager
             adapter = this@RestoreProgressFragment.adapter
-            addItemDecoration(DividerItemDecoration(context, VERTICAL))
+            addItemDecoration(DividerItemDecoration(context, SHOW_DIVIDER_NONE))
         }
 
         button.setText(R.string.restore_finished_button)
