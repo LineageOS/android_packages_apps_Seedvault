@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout.SHOW_DIVIDER_NONE
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -17,7 +18,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager.VERTICAL
 import androidx.recyclerview.widget.RecyclerView
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.restore.RestoreViewModel
@@ -58,7 +58,7 @@ class InstallProgressFragment : Fragment(), InstallItemListener {
         appList.apply {
             layoutManager = this@InstallProgressFragment.layoutManager
             adapter = this@InstallProgressFragment.adapter
-            addItemDecoration(DividerItemDecoration(context, VERTICAL))
+            addItemDecoration(DividerItemDecoration(context, SHOW_DIVIDER_NONE))
         }
         button.setText(R.string.restore_next)
         button.setOnClickListener { viewModel.onNextClickedAfterInstallingApps() }
