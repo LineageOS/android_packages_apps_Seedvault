@@ -1,12 +1,16 @@
 package com.stevesoltys.seedvault
 
+import android.Manifest.permission.INTERACT_ACROSS_USERS_FULL
 import android.app.Application
 import android.app.backup.BackupManager.PACKAGE_MANAGER_SENTINEL
 import android.app.backup.IBackupManager
+import android.content.Context
 import android.content.Context.BACKUP_SERVICE
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Build
 import android.os.ServiceManager.getService
 import android.os.StrictMode
+import android.os.UserHandle
 import com.stevesoltys.seedvault.crypto.cryptoModule
 import com.stevesoltys.seedvault.header.headerModule
 import com.stevesoltys.seedvault.metadata.MetadataManager
@@ -46,7 +50,7 @@ open class App : Application() {
         factory<IBackupManager> { IBackupManager.Stub.asInterface(getService(BACKUP_SERVICE)) }
         factory { AppListRetriever(this@App, get(), get(), get()) }
 
-        viewModel { SettingsViewModel(this@App, get(), get(), get(), get(), get(), get()) }
+        viewModel { SettingsViewModel(this@App, get(), get(), get(), get(), get(), get(), get()) }
         viewModel { RecoveryCodeViewModel(this@App, get(), get(), get(), get(), get(), get()) }
         viewModel { BackupStorageViewModel(this@App, get(), get(), get(), get()) }
         viewModel { RestoreStorageViewModel(this@App, get(), get()) }
@@ -136,4 +140,10 @@ fun <T> permitDiskReads(func: () -> T): T {
     } else {
         func()
     }
+}
+
+fun Context.getSystemContext(isUsbStorage: () -> Boolean): Context {
+    return if (checkSelfPermission(INTERACT_ACROSS_USERS_FULL) == PERMISSION_GRANTED &&
+        isUsbStorage()
+    ) createContextAsUser(UserHandle.SYSTEM, 0) else this
 }

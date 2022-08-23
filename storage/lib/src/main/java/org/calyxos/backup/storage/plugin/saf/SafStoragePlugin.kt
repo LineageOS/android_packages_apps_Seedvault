@@ -28,13 +28,22 @@ internal const val CHUNK_FOLDER_COUNT = 256
 
 private const val TAG = "SafStoragePlugin"
 
+/**
+ * @param appContext application context provided by the storage module
+ */
 @Suppress("BlockingMethodInNonBlockingContext")
 public abstract class SafStoragePlugin(
-    private val context: Context,
+    private val appContext: Context,
 ) : StoragePlugin {
-
-    private val cache = SafCache()
+    /**
+     * Attention: This context could be unexpected. E.g. the system user's application context,
+     * in the case of USB storage, if INTERACT_ACROSS_USERS_FULL permission is granted.
+     * Use [appContext], if you need the context of the current app and user
+     * and [context] for all file access.
+     */
+    protected abstract val context: Context
     protected abstract val root: DocumentFile?
+    private val cache = SafCache()
 
     private val folder: DocumentFile?
         get() {
@@ -42,9 +51,10 @@ public abstract class SafStoragePlugin(
             if (cache.currentFolder != null) return cache.currentFolder
 
             @SuppressLint("HardwareIds")
-            // this is unique to each combination of app-signing key, user, and device
-            // so we don't leak anything by not hashing this and can use it as is
-            val androidId = Settings.Secure.getString(context.contentResolver, ANDROID_ID)
+            // This is unique to each combination of app-signing key, user, and device
+            // so we don't leak anything by not hashing this and can use it as is.
+            // Note: Use [appContext] here to not get the wrong ID for a different user.
+            val androidId = Settings.Secure.getString(appContext.contentResolver, ANDROID_ID)
             // the folder name is our user ID
             val folderName = "$androidId.sv"
             cache.currentFolder = try {
@@ -55,8 +65,6 @@ public abstract class SafStoragePlugin(
             }
             return cache.currentFolder
         }
-
-    private val contentResolver = context.contentResolver
 
     private fun timestampToSnapshot(timestamp: Long): String {
         return "$timestamp.SeedSnap"
@@ -153,7 +161,7 @@ public abstract class SafStoragePlugin(
         val name = timestampToSnapshot(timestamp)
         // TODO should we check if it exists first?
         val snapshotFile = folder.createFileOrThrow(name, MIME_TYPE)
-        return snapshotFile.getOutputStream(contentResolver)
+        return snapshotFile.getOutputStream(context.contentResolver)
     }
 
     /************************* Restore *******************************/
@@ -188,7 +196,7 @@ public abstract class SafStoragePlugin(
         val snapshotFile = cache.snapshotFiles.getOrElse(storedSnapshot) {
             getFolder(storedSnapshot).findFileBlocking(context, timestampToSnapshot(timestamp))
         } ?: throw IOException("Could not get file for snapshot $timestamp")
-        return snapshotFile.getInputStream(contentResolver)
+        return snapshotFile.getInputStream(context.contentResolver)
     }
 
     @Throws(IOException::class)

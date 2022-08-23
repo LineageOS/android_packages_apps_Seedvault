@@ -2,11 +2,12 @@ package com.stevesoltys.seedvault.plugins.saf
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.stevesoltys.seedvault.getSystemContext
 import com.stevesoltys.seedvault.plugins.EncryptedMetadata
 import com.stevesoltys.seedvault.plugins.StoragePlugin
+import com.stevesoltys.seedvault.settings.Storage
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
@@ -16,11 +17,19 @@ private val TAG = DocumentsProviderStoragePlugin::class.java.simpleName
 
 @Suppress("BlockingMethodInNonBlockingContext")
 internal class DocumentsProviderStoragePlugin(
-    private val context: Context,
+    private val appContext: Context,
     private val storage: DocumentsStorage,
 ) : StoragePlugin {
 
-    private val packageManager: PackageManager = context.packageManager
+    /**
+     * Attention: This context might be from a different user. Use with care.
+     */
+    private val context: Context
+        get() = appContext.getSystemContext {
+            storage.storage?.isUsb == true
+        }
+
+    private val packageManager: PackageManager = appContext.packageManager
 
     @Throws(IOException::class)
     override suspend fun startNewRestoreSet(token: Long) {
@@ -72,10 +81,12 @@ internal class DocumentsProviderStoragePlugin(
     }
 
     @Throws(IOException::class)
-    override suspend fun hasBackup(uri: Uri): Boolean {
-        val parent = DocumentFile.fromTreeUri(context, uri) ?: throw AssertionError()
-        val rootDir = parent.findFileBlocking(context, DIRECTORY_ROOT) ?: return false
-        val backupSets = getBackups(context, rootDir)
+    override suspend fun hasBackup(storage: Storage): Boolean {
+        // potentially get system user context if needed here
+        val c = appContext.getSystemContext { storage.isUsb }
+        val parent = DocumentFile.fromTreeUri(c, storage.uri) ?: throw AssertionError()
+        val rootDir = parent.findFileBlocking(c, DIRECTORY_ROOT) ?: return false
+        val backupSets = getBackups(c, rootDir)
         return backupSets.isNotEmpty()
     }
 

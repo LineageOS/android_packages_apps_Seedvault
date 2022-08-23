@@ -3,6 +3,7 @@ package com.stevesoltys.seedvault.ui.storage
 import android.content.Context
 import android.database.Cursor
 import android.graphics.drawable.Drawable
+import android.os.UserHandle
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Root.COLUMN_AVAILABLE_BYTES
 import android.provider.DocumentsContract.Root.COLUMN_DOCUMENT_ID
@@ -17,6 +18,7 @@ import android.provider.DocumentsContract.Root.FLAG_SUPPORTS_CREATE
 import android.provider.DocumentsContract.Root.FLAG_SUPPORTS_IS_CHILD
 import android.util.Log
 import com.stevesoltys.seedvault.R
+import com.stevesoltys.seedvault.getSystemContext
 import com.stevesoltys.seedvault.ui.storage.StorageOption.SafOption
 
 internal object StorageRootResolver {
@@ -32,6 +34,21 @@ internal object StorageRootResolver {
                 while (cursor.moveToNext()) {
                     val root = getStorageRoot(context, authority, cursor)
                     if (root != null) roots.add(root)
+                }
+            }
+            // add special system user roots for USB devices
+            val c = context.getSystemContext {
+                authority == AUTHORITY_STORAGE && UserHandle.myUserId() != UserHandle.USER_SYSTEM
+            }
+            // only proceed if we really got a different [Context], e.g. had permission for it
+            if (context !== c) {
+                c.contentResolver.query(rootsUri, null, null, null, null)?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        // Pass in [context] since it is used to query package manager for app icons
+                        val root = getStorageRoot(context, authority, cursor)
+                        // only add USB storage from system user, no others
+                        if (root != null && root.isUsb) roots.add(root)
+                    }
                 }
             }
         } catch (e: Exception) {
