@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.stevesoltys.seedvault"
-    android:versionCode="33000301"
-    android:versionName="13-3.1">
+    android:versionCode="33030030"
+    android:versionName="13-3.3">
     <!--
     The version code is the targeted SDK_VERSION plus 6 digits for our own version code.
     The version name is the targeted Android version followed by - and our own version name.
@@ -54,6 +54,16 @@
     <!-- Used to authenticate saving a new recovery code -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- This is needed to query content providers in other users -->
+    <uses-permission
+        android:name="android.permission.INTERACT_ACROSS_USERS_FULL"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Used to get logcat for system part of backup API, gets permission dialog -->
+    <uses-permission
+        android:name="android.permission.READ_LOGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Permission used to open settings -->
     <permission
         android:name="com.stevesoltys.seedvault.OPEN_SETTINGS"
@@ -63,11 +73,6 @@
     <permission
         android:name="com.stevesoltys.seedvault.RESTORE_BACKUP"
         android:protectionLevel="system|signature" />
-
-    <!-- This is needed to query content providers in other users -->
-    <uses-permission
-        android:name="android.permission.INTERACT_ACROSS_USERS_FULL"
-        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".App"

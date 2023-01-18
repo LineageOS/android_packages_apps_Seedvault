@@ -63,14 +63,23 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 return@OnPreferenceChangeListener false
             }
             // main key is present, so enable or disable normally
-            try {
-                backupManager.isBackupEnabled = enabled
-                if (enabled) viewModel.enableCallLogBackup()
-                return@OnPreferenceChangeListener true
-            } catch (e: RemoteException) {
-                Log.e(TAG, "Error setting backup enabled to $enabled", e)
-                backup.isChecked = !enabled
-                return@OnPreferenceChangeListener false
+            when (enabled) {
+                true -> return@OnPreferenceChangeListener trySetBackupEnabled(true)
+                false -> {
+                    AlertDialog.Builder(requireContext())
+                        .setIcon(R.drawable.ic_warning)
+                        .setTitle(R.string.settings_backup_dialog_title)
+                        .setMessage(R.string.settings_backup_dialog_message)
+                        .setPositiveButton(R.string.settings_backup_dialog_disable) { dialog, _ ->
+                            trySetBackupEnabled(false)
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton(R.string.settings_backup_apk_dialog_cancel) { dialog,
+                            _ -> dialog.dismiss()
+                        }
+                        .show()
+                    return@OnPreferenceChangeListener false
+                }
             }
         }
 
@@ -105,7 +114,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     dialog.dismiss()
                 }
                 .setNegativeButton(R.string.settings_backup_apk_dialog_disable) { dialog, _ ->
-                    apkBackup.isChecked = enable
+                    apkBackup.isChecked = false
                     dialog.dismiss()
                 }
                 .show()
@@ -130,14 +139,14 @@ class SettingsFragment : PreferenceFragmentCompat() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel.lastBackupTime.observe(viewLifecycleOwner, { time ->
+        viewModel.lastBackupTime.observe(viewLifecycleOwner) { time ->
             setAppBackupStatusSummary(time)
-        })
+        }
 
         val backupFiles: Preference = findPreference("backup_files")!!
-        viewModel.filesSummary.observe(viewLifecycleOwner, { summary ->
+        viewModel.filesSummary.observe(viewLifecycleOwner) { summary ->
             backupFiles.summary = summary
-        })
+        }
     }
 
     override fun onStart() {
@@ -160,10 +169,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
         if (resources.getBoolean(R.bool.show_restore_in_settings)) {
             menuRestore?.isVisible = true
         }
-        viewModel.backupPossible.observe(viewLifecycleOwner, { possible ->
+        viewModel.backupPossible.observe(viewLifecycleOwner) { possible ->
             menuBackupNow?.isEnabled = possible
             menuRestore?.isEnabled = possible
-        })
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -187,6 +196,19 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
         else -> super.onOptionsItemSelected(item)
+    }
+
+    private fun trySetBackupEnabled(enabled: Boolean): Boolean {
+        return try {
+            backupManager.isBackupEnabled = enabled
+            if (enabled) viewModel.enableCallLogBackup()
+            backup.isChecked = enabled
+            true
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Error setting backup enabled to $enabled", e)
+            backup.isChecked = !enabled
+            false
+        }
     }
 
     private fun setBackupEnabledState() {
