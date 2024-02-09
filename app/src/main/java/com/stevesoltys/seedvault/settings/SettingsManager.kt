@@ -9,13 +9,14 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
-import com.stevesoltys.seedvault.getSystemContext
+import com.stevesoltys.seedvault.getStorageContext
 import com.stevesoltys.seedvault.permitDiskReads
 import com.stevesoltys.seedvault.transport.backup.BackupCoordinator
 import java.util.concurrent.ConcurrentSkipListSet
 
 internal const val PREF_KEY_TOKEN = "token"
 internal const val PREF_KEY_BACKUP_APK = "backup_apk"
+internal const val PREF_KEY_AUTO_RESTORE = "auto_restore"
 
 private const val PREF_KEY_STORAGE_URI = "storageUri"
 private const val PREF_KEY_STORAGE_NAME = "storageName"
@@ -30,7 +31,8 @@ private const val PREF_KEY_FLASH_DRIVE_PRODUCT_ID = "flashDriveProductId"
 private const val PREF_KEY_BACKUP_APP_BLACKLIST = "backupAppBlacklist"
 
 private const val PREF_KEY_BACKUP_STORAGE = "backup_storage"
-private const val PREF_KEY_UNLIMITED_QUOTA = "unlimited_quota"
+internal const val PREF_KEY_UNLIMITED_QUOTA = "unlimited_quota"
+internal const val PREF_KEY_D2D_BACKUPS = "d2d_backups"
 
 class SettingsManager(private val context: Context) {
 
@@ -131,7 +133,7 @@ class SettingsManager(private val context: Context) {
     @WorkerThread
     fun canDoBackupNow(): Boolean {
         val storage = getStorage() ?: return false
-        val systemContext = context.getSystemContext { storage.isUsb }
+        val systemContext = context.getStorageContext { storage.isUsb }
         return !storage.isUnavailableUsb(systemContext) && !storage.isUnavailableNetwork(context)
     }
 
@@ -151,6 +153,14 @@ class SettingsManager(private val context: Context) {
     }
 
     fun isQuotaUnlimited() = prefs.getBoolean(PREF_KEY_UNLIMITED_QUOTA, false)
+
+    fun d2dBackupsEnabled() = prefs.getBoolean(PREF_KEY_D2D_BACKUPS, false)
+
+    fun setD2dBackupsEnabled(enabled: Boolean) {
+        prefs.edit()
+            .putBoolean(PREF_KEY_D2D_BACKUPS, enabled)
+            .apply()
+    }
 }
 
 data class Storage(

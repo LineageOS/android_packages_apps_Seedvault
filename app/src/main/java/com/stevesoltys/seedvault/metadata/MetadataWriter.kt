@@ -35,6 +35,7 @@ internal class MetadataWriterImpl(private val crypto: Crypto) : MetadataWriter {
                 put(JSON_METADATA_SDK_INT, metadata.androidVersion)
                 put(JSON_METADATA_INCREMENTAL, metadata.androidIncremental)
                 put(JSON_METADATA_NAME, metadata.deviceName)
+                put(JSON_METADATA_D2D_BACKUP, metadata.d2dBackup)
             })
         }
         for ((packageName, packageMetadata) in metadata.packageMetadataMap) {
@@ -47,6 +48,9 @@ internal class MetadataWriterImpl(private val crypto: Crypto) : MetadataWriter {
                 // only when version > 0 and we have actual restore data
                 if (packageMetadata.backupType != null) {
                     put(JSON_PACKAGE_BACKUP_TYPE, packageMetadata.backupType!!.name)
+                }
+                if (packageMetadata.size != null) {
+                    put(JSON_PACKAGE_SIZE, packageMetadata.size)
                 }
                 if (packageMetadata.system) {
                     put(JSON_PACKAGE_SYSTEM, packageMetadata.system)

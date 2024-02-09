@@ -32,12 +32,11 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.IOException
 import java.io.OutputStream
 import kotlin.random.Random
+import kotlin.random.nextLong
 
 @Suppress("BlockingMethodInNonBlockingContext")
 internal class BackupCoordinatorTest : BackupTest() {
@@ -46,8 +45,8 @@ internal class BackupCoordinatorTest : BackupTest() {
     private val kv = mockk<KVBackup>()
     private val full = mockk<FullBackup>()
     private val apkBackup = mockk<ApkBackup>()
-    private val packageService: PackageService = mockk()
     private val notificationManager = mockk<BackupNotificationManager>()
+    private val packageService = mockk<PackageService>()
 
     private val backup = BackupCoordinator(
         context,
@@ -171,20 +170,6 @@ internal class BackupCoordinatorTest : BackupTest() {
     }
 
     @Test
-    fun `isAppEligibleForBackup() exempts plugin provider and blacklisted apps`() {
-        every {
-            settingsManager.isBackupEnabled(packageInfo.packageName)
-        } returns true andThen false andThen true
-        every {
-            plugin.providerPackageName
-        } returns packageInfo.packageName andThen "new.package" andThen "new.package"
-
-        assertFalse(backup.isAppEligibleForBackup(packageInfo, true))
-        assertFalse(backup.isAppEligibleForBackup(packageInfo, true))
-        assertTrue(backup.isAppEligibleForBackup(packageInfo, true))
-    }
-
-    @Test
     fun `clearing KV backup data throws`() = runBlocking {
         every { settingsManager.getToken() } returns token
         every { metadataManager.salt } returns salt
@@ -220,14 +205,22 @@ internal class BackupCoordinatorTest : BackupTest() {
 
     @Test
     fun `finish backup delegates to KV plugin if it has state`() = runBlocking {
+        val size = 0L
+
         every { kv.hasState() } returns true
         every { full.hasState() } returns false
         every { kv.getCurrentPackage() } returns packageInfo
         coEvery { kv.finishBackup() } returns TRANSPORT_OK
         every { settingsManager.getToken() } returns token
         coEvery { plugin.getOutputStream(token, FILE_BACKUP_METADATA) } returns metadataOutputStream
+        every { kv.getCurrentSize() } returns size
         every {
-            metadataManager.onPackageBackedUp(packageInfo, BackupType.KV, metadataOutputStream)
+            metadataManager.onPackageBackedUp(
+                packageInfo = packageInfo,
+                type = BackupType.KV,
+                size = size,
+                metadataOutputStream = metadataOutputStream,
+            )
         } just Runs
         every { metadataOutputStream.close() } just Runs
 
@@ -241,6 +234,7 @@ internal class BackupCoordinatorTest : BackupTest() {
         every { kv.hasState() } returns true
         every { full.hasState() } returns false
         every { kv.getCurrentPackage() } returns pmPackageInfo
+        every { kv.getCurrentSize() } returns 42L
 
         coEvery { kv.finishBackup() } returns TRANSPORT_OK
         every { settingsManager.canDoBackupNow() } returns false
@@ -251,6 +245,7 @@ internal class BackupCoordinatorTest : BackupTest() {
     @Test
     fun `finish backup delegates to full plugin if it has state`() = runBlocking {
         val result = Random.nextInt()
+        val size: Long? = null
 
         every { kv.hasState() } returns false
         every { full.hasState() } returns true
@@ -258,8 +253,14 @@ internal class BackupCoordinatorTest : BackupTest() {
         every { full.finishBackup() } returns result
         every { settingsManager.getToken() } returns token
         coEvery { plugin.getOutputStream(token, FILE_BACKUP_METADATA) } returns metadataOutputStream
+        every { full.getCurrentSize() } returns size
         every {
-            metadataManager.onPackageBackedUp(packageInfo, BackupType.FULL, metadataOutputStream)
+            metadataManager.onPackageBackedUp(
+                packageInfo = packageInfo,
+                type = BackupType.FULL,
+                size = size,
+                metadataOutputStream = metadataOutputStream,
+            )
         } just Runs
         every { metadataOutputStream.close() } just Runs
 
@@ -391,6 +392,7 @@ internal class BackupCoordinatorTest : BackupTest() {
             }
         )
         val packageMetadata: PackageMetadata = mockk()
+        val size = Random.nextLong(1L..Long.MAX_VALUE)
 
         every { settingsManager.canDoBackupNow() } returns true
         every { metadataManager.requiresInit } returns false
@@ -410,8 +412,14 @@ internal class BackupCoordinatorTest : BackupTest() {
         every { kv.hasState() } returns true
         every { full.hasState() } returns false
         every { kv.getCurrentPackage() } returns pmPackageInfo
+        every { kv.getCurrentSize() } returns size
         every {
-            metadataManager.onPackageBackedUp(pmPackageInfo, BackupType.KV, metadataOutputStream)
+            metadataManager.onPackageBackedUp(
+                pmPackageInfo,
+                BackupType.KV,
+                size,
+                metadataOutputStream,
+            )
         } just Runs
         coEvery { kv.finishBackup() } returns TRANSPORT_OK
 

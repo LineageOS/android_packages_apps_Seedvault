@@ -38,6 +38,7 @@ data class AppStatus(
     val icon: Drawable,
     val name: String,
     val time: Long,
+    val size: Long?,
     val status: AppBackupState,
     val isSpecial: Boolean = false,
 ) : AppListItem()
@@ -55,9 +56,16 @@ internal class AppListRetriever(
 
     @WorkerThread
     fun getAppList(): List<AppListItem> {
-        return listOf(AppSectionTitle(R.string.backup_section_system)) + getSpecialApps() +
-            listOf(AppSectionTitle(R.string.backup_section_user)) + getUserApps() +
-            listOf(AppSectionTitle(R.string.backup_section_not_allowed)) + getNotAllowedApps()
+
+        val appListSections = linkedMapOf(
+            AppSectionTitle(R.string.backup_section_system) to getSpecialApps(),
+            AppSectionTitle(R.string.backup_section_user) to getUserApps(),
+            AppSectionTitle(R.string.backup_section_not_allowed) to getNotAllowedApps()
+        ).filter { it.value.isNotEmpty() }
+
+        return appListSections.flatMap { (sectionTitle, appList) ->
+            listOf(sectionTitle) + appList
+        }
     }
 
     private fun getSpecialApps(): List<AppListItem> {
@@ -80,6 +88,7 @@ internal class AppListRetriever(
                 icon = getIcon(packageName),
                 name = context.getString(stringId),
                 time = metadata?.time ?: 0,
+                size = metadata?.size,
                 status = status,
                 isSpecial = true
             )
@@ -104,6 +113,7 @@ internal class AppListRetriever(
                 icon = getIcon(it.packageName),
                 name = getAppName(context, it.packageName).toString(),
                 time = time,
+                size = metadata?.size,
                 status = status
             )
         }.sortedBy { it.name.lowercase(locale) }
@@ -118,6 +128,7 @@ internal class AppListRetriever(
                 icon = getIcon(it.packageName),
                 name = getAppName(context, it.packageName).toString(),
                 time = 0,
+                size = null,
                 status = FAILED_NOT_ALLOWED
             )
         }.sortedBy { it.name.lowercase(locale) }

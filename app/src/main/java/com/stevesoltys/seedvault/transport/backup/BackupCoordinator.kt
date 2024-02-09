@@ -143,12 +143,9 @@ internal class BackupCoordinator(
         @Suppress("UNUSED_PARAMETER") isFullBackup: Boolean,
     ): Boolean {
         val packageName = targetPackage.packageName
-        // Check that the app is not blacklisted by the user
-        val enabled = settingsManager.isBackupEnabled(packageName)
-        if (!enabled) Log.w(TAG, "Backup of $packageName disabled by user.")
-        // We need to exclude the DocumentsProvider used to store backup data.
-        // Otherwise, it gets killed when we back it up, terminating our backup.
-        return enabled && targetPackage.packageName != plugin.providerPackageName
+        val shouldInclude = packageService.shouldIncludeAppInBackup(packageName)
+        if (!shouldInclude) Log.i(TAG, "Excluding $packageName from backup.")
+        return shouldInclude
     }
 
     /**
@@ -366,6 +363,7 @@ internal class BackupCoordinator(
             // getCurrentPackage() not-null because we have state, call before finishing
             val packageInfo = kv.getCurrentPackage()!!
             val packageName = packageInfo.packageName
+            val size = kv.getCurrentSize()
             // tell K/V backup to finish
             var result = kv.finishBackup()
             if (result == TRANSPORT_OK) {
@@ -373,7 +371,7 @@ internal class BackupCoordinator(
                 // call onPackageBackedUp for @pm@ only if we can do backups right now
                 if (!isPmBackup || settingsManager.canDoBackupNow()) {
                     try {
-                        onPackageBackedUp(packageInfo, BackupType.KV)
+                        onPackageBackedUp(packageInfo, BackupType.KV, size)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calling onPackageBackedUp for $packageName", e)
                         result = TRANSPORT_PACKAGE_REJECTED
@@ -399,10 +397,11 @@ internal class BackupCoordinator(
             // getCurrentPackage() not-null because we have state
             val packageInfo = full.getCurrentPackage()!!
             val packageName = packageInfo.packageName
+            val size = full.getCurrentSize()
             // tell full backup to finish
             var result = full.finishBackup()
             try {
-                onPackageBackedUp(packageInfo, BackupType.FULL)
+                onPackageBackedUp(packageInfo, BackupType.FULL, size)
             } catch (e: Exception) {
                 Log.e(TAG, "Error calling onPackageBackedUp for $packageName", e)
                 result = TRANSPORT_PACKAGE_REJECTED
@@ -473,9 +472,9 @@ internal class BackupCoordinator(
         }
     }
 
-    private suspend fun onPackageBackedUp(packageInfo: PackageInfo, type: BackupType) {
+    private suspend fun onPackageBackedUp(packageInfo: PackageInfo, type: BackupType, size: Long?) {
         plugin.getMetadataOutputStream().use {
-            metadataManager.onPackageBackedUp(packageInfo, type, it)
+            metadataManager.onPackageBackedUp(packageInfo, type, size, it)
         }
     }
 

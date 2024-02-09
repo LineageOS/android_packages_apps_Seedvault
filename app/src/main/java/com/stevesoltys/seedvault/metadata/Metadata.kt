@@ -18,6 +18,7 @@ data class BackupMetadata(
     internal val androidVersion: Int = Build.VERSION.SDK_INT,
     internal val androidIncremental: String = Build.VERSION.INCREMENTAL,
     internal val deviceName: String = "${Build.MANUFACTURER} ${Build.MODEL}",
+    internal var d2dBackup: Boolean = false,
     internal val packageMetadataMap: PackageMetadataMap = PackageMetadataMap(),
 )
 
@@ -29,6 +30,7 @@ internal const val JSON_METADATA_TIME = "time"
 internal const val JSON_METADATA_SDK_INT = "sdk_int"
 internal const val JSON_METADATA_INCREMENTAL = "incremental"
 internal const val JSON_METADATA_NAME = "name"
+internal const val JSON_METADATA_D2D_BACKUP = "d2d_backup"
 
 enum class PackageState {
     /**
@@ -72,6 +74,7 @@ data class PackageMetadata(
     internal var time: Long = 0L,
     internal var state: PackageState = UNKNOWN_ERROR,
     internal var backupType: BackupType? = null,
+    internal var size: Long? = null,
     internal val system: Boolean = false,
     internal val version: Long? = null,
     internal val installer: String? = null,
@@ -95,6 +98,7 @@ enum class BackupType { KV, FULL }
 internal const val JSON_PACKAGE_TIME = "time"
 internal const val JSON_PACKAGE_BACKUP_TYPE = "backupType"
 internal const val JSON_PACKAGE_STATE = "state"
+internal const val JSON_PACKAGE_SIZE = "size"
 internal const val JSON_PACKAGE_SYSTEM = "system"
 internal const val JSON_PACKAGE_VERSION = "version"
 internal const val JSON_PACKAGE_INSTALLER = "installer"
