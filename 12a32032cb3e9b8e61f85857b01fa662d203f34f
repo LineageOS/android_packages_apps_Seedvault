@@ -16,6 +16,23 @@
       "message": "https://github.com/chirayudesai/backup/tree/382137 in case I\u0027m not around to push",
       "revId": "12a32032cb3e9b8e61f85857b01fa662d203f34f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ee6cdb9_627f8e8e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2024-02-13T15:14:52Z",
+      "side": 1,
+      "message": "It\u0027d be good to have https://github.com/seedvault-app/seedvault/pull/610 in too",
+      "revId": "12a32032cb3e9b8e61f85857b01fa662d203f34f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
