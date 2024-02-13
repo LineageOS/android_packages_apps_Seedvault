@@ -49,6 +49,8 @@
     <string name="settings_expert_title">Expert settings</string>
     <string name="settings_expert_quota_title">Unlimited app quota</string>
     <string name="settings_expert_quota_summary">Do not impose a limitation on the size of app backups.\n\nWarning: This can fill up your storage location quickly. Not needed for most apps.</string>
+    <string name="settings_expert_d2d_title">Device-to-device backups</string>
+    <string name="settings_expert_d2d_summary">This forces backups for most apps, even when they disallow them. This is experimental, use at your own risk.</string>
     <string name="settings_expert_logcat_title">Save app log</string>
     <string name="settings_expert_logcat_summary">Developers can diagnose bugs with these logs.\n\nWarning: The log file might contain personally identifiable information. Review before and delete after sharing!</string>
     <string name="settings_expert_logcat_error">Error: Could not save app log</string>
@@ -117,12 +119,13 @@
 
     <!-- Notification -->
     <string name="notification_channel_title">Backup notification</string>
+    <string name="notification_success_channel_title">Success notification</string>
     <string name="notification_title">Backup running</string>
     <string name="notification_backup_already_running">Backup already in progress</string>
     <string name="notification_backup_disabled">Backup not enabled</string>
 
     <string name="notification_success_title">Backup finished</string>
-    <string name="notification_success_text">%1$d of %2$d apps backed up. Tap to learn more.</string>
+    <string name="notification_success_text">%1$d of %2$d apps backed up (%3$s). Tap to learn more.</string>
     <string name="notification_failed_title">Backup failed</string>
 
     <string name="notification_error_channel_title">Error notification</string>

@@ -17,7 +17,6 @@ import com.stevesoltys.seedvault.metadata.PackageState
 import com.stevesoltys.seedvault.settings.SettingsManager
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -54,6 +53,12 @@ internal class ApkBackup(
 
         // do not back up when setting is not enabled
         if (!settingsManager.backupApks()) return null
+
+        // do not back up if package is blacklisted
+        if (!settingsManager.isBackupEnabled(packageName)) {
+            Log.d(TAG, "Package $packageName is blacklisted. Not backing it up.")
+            return null
+        }
 
         // do not back up test-only apps as we can't re-install them anyway
         // see: https://commonsware.com/blog/2017/10/31/android-studio-3p0-flag-test-only.html
@@ -139,10 +144,8 @@ internal class ApkBackup(
         val apk = File(apkPath)
         return try {
             apk.inputStream()
-        } catch (e: FileNotFoundException) {
-            Log.e(TAG, "Error opening ${apk.absolutePath} for backup.", e)
-            throw IOException(e)
-        } catch (e: SecurityException) {
+        } catch (e: Exception) {
+            // SAF may throw all sorts of exceptions, so wrap them in IOException
             Log.e(TAG, "Error opening ${apk.absolutePath} for backup.", e)
             throw IOException(e)
         }

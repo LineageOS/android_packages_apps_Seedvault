@@ -1,6 +1,5 @@
 package com.stevesoltys.seedvault.e2e
 
-import android.app.backup.IBackupManager
 import android.content.pm.PackageInfo
 import android.os.ParcelFileDescriptor
 import com.stevesoltys.seedvault.e2e.io.BackupDataInputIntercept
@@ -25,8 +24,6 @@ internal interface LargeBackupTestBase : LargeTestBase {
     companion object {
         private const val BACKUP_TIMEOUT = 360 * 1000L
     }
-
-    val backupManager: IBackupManager get() = get()
 
     val spyBackupNotificationManager: BackupNotificationManager get() = get()
 
@@ -170,7 +167,7 @@ internal interface LargeBackupTestBase : LargeTestBase {
         clearMocks(spyBackupNotificationManager)
 
         every {
-            spyBackupNotificationManager.onBackupFinished(any(), any())
+            spyBackupNotificationManager.onBackupFinished(any(), any(), any())
         } answers {
             val success = firstArg<Boolean>()
             assert(success) { "Backup failed." }

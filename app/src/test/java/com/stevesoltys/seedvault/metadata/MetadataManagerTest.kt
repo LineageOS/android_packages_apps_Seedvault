@@ -19,6 +19,7 @@ import com.stevesoltys.seedvault.metadata.PackageState.NO_DATA
 import com.stevesoltys.seedvault.metadata.PackageState.QUOTA_EXCEEDED
 import com.stevesoltys.seedvault.metadata.PackageState.UNKNOWN_ERROR
 import com.stevesoltys.seedvault.metadata.PackageState.WAS_STOPPED
+import com.stevesoltys.seedvault.settings.SettingsManager
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -26,7 +27,10 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.stopKoin
@@ -51,8 +55,16 @@ class MetadataManagerTest {
     private val crypto: Crypto = mockk()
     private val metadataWriter: MetadataWriter = mockk()
     private val metadataReader: MetadataReader = mockk()
+    private val settingsManager: SettingsManager = mockk()
 
-    private val manager = MetadataManager(context, clock, crypto, metadataWriter, metadataReader)
+    private val manager = MetadataManager(
+        context = context,
+        clock = clock,
+        crypto = crypto,
+        metadataWriter = metadataWriter,
+        metadataReader = metadataReader,
+        settingsManager = settingsManager
+    )
 
     private val time = 42L
     private val token = Random.nextLong()
@@ -68,6 +80,11 @@ class MetadataManagerTest {
     private val cacheOutputStream: FileOutputStream = mockk()
     private val cacheInputStream: FileInputStream = mockk()
     private val encodedMetadata = getRandomByteArray()
+
+    @Before
+    fun beforeEachTest() {
+        every { settingsManager.d2dBackupsEnabled() } returns false
+    }
 
     @After
     fun afterEachTest() {
@@ -232,6 +249,7 @@ class MetadataManagerTest {
             time = time,
             packageMetadataMap = PackageMetadataMap() // otherwise this isn't copied, but referenced
         )
+        val size = Random.nextLong()
         val packageMetadata = PackageMetadata(time)
         updatedMetadata.packageMetadataMap[packageName] = packageMetadata
 
@@ -239,13 +257,36 @@ class MetadataManagerTest {
         every { clock.time() } returns time
         expectModifyMetadata(initialMetadata)
 
-        manager.onPackageBackedUp(packageInfo, BackupType.FULL, storageOutputStream)
+        manager.onPackageBackedUp(packageInfo, BackupType.FULL, size, storageOutputStream)
 
         assertEquals(
-            packageMetadata.copy(state = APK_AND_DATA, backupType = BackupType.FULL, system = true),
+            packageMetadata.copy(
+                state = APK_AND_DATA,
+                backupType = BackupType.FULL,
+                size = size,
+                system = true,
+            ),
             manager.getPackageMetadata(packageName)
         )
         assertEquals(time, manager.getLastBackupTime())
+        assertFalse(updatedMetadata.d2dBackup)
+
+        verify {
+            cacheInputStream.close()
+            cacheOutputStream.close()
+        }
+    }
+
+    @Test
+    fun `test onPackageBackedUp() with D2D enabled`() {
+        expectReadFromCache()
+        every { clock.time() } returns time
+        expectModifyMetadata(initialMetadata)
+
+        every { settingsManager.d2dBackupsEnabled() } returns true
+
+        manager.onPackageBackedUp(packageInfo, BackupType.FULL, 0L, storageOutputStream)
+        assertTrue(initialMetadata.d2dBackup)
 
         verify {
             cacheInputStream.close()
@@ -256,19 +297,20 @@ class MetadataManagerTest {
     @Test
     fun `test onPackageBackedUp() fails to write to storage`() {
         val updateTime = time + 1
+        val size = Random.nextLong()
         val updatedMetadata = initialMetadata.copy(
             time = updateTime,
             packageMetadataMap = PackageMetadataMap() // otherwise this isn't copied, but referenced
         )
         updatedMetadata.packageMetadataMap[packageName] =
-            PackageMetadata(updateTime, APK_AND_DATA, BackupType.KV)
+            PackageMetadata(updateTime, APK_AND_DATA, BackupType.KV, size)
 
         expectReadFromCache()
         every { clock.time() } returns updateTime
         every { metadataWriter.write(updatedMetadata, storageOutputStream) } throws IOException()
 
         try {
-            manager.onPackageBackedUp(packageInfo, BackupType.KV, storageOutputStream)
+            manager.onPackageBackedUp(packageInfo, BackupType.KV, size, storageOutputStream)
             fail()
         } catch (e: IOException) {
             // expected
@@ -301,7 +343,7 @@ class MetadataManagerTest {
         every { clock.time() } returns time
         expectModifyMetadata(updatedMetadata)
 
-        manager.onPackageBackedUp(packageInfo, BackupType.FULL, storageOutputStream)
+        manager.onPackageBackedUp(packageInfo, BackupType.FULL, 0L, storageOutputStream)
 
         assertEquals(time, manager.getLastBackupTime())
         assertEquals(PackageMetadata(time), manager.getPackageMetadata(cachedPackageName))

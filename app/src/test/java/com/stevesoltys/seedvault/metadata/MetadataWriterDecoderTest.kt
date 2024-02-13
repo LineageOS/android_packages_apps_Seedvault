@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS
 import kotlin.random.Random
+import kotlin.random.nextLong
 
 @TestInstance(PER_CLASS)
 internal class MetadataWriterDecoderTest {
@@ -25,7 +26,10 @@ internal class MetadataWriterDecoderTest {
 
     @Test
     fun `encoded metadata matches decoded metadata (no packages)`() {
-        val metadata = getMetadata()
+        val metadata = getMetadata().let {
+            if (it.version == 0.toByte()) it.copy(salt = "") // no salt in version 0
+            else it
+        }
         assertEquals(
             metadata,
             decoder.decode(encoder.encode(metadata), metadata.version, metadata.token)
@@ -81,11 +85,12 @@ internal class MetadataWriterDecoderTest {
                     time = Random.nextLong(),
                     state = QUOTA_EXCEEDED,
                     backupType = BackupType.FULL,
+                    size = Random.nextLong(0..Long.MAX_VALUE),
                     system = Random.nextBoolean(),
                     version = Random.nextLong(),
                     installer = getRandomString(),
                     sha256 = getRandomString(),
-                    signatures = listOf(getRandomString())
+                    signatures = listOf(getRandomString()),
                 )
             )
             put(
@@ -93,22 +98,24 @@ internal class MetadataWriterDecoderTest {
                     time = Random.nextLong(),
                     state = NO_DATA,
                     backupType = BackupType.KV,
+                    size = null,
                     system = Random.nextBoolean(),
                     version = Random.nextLong(),
                     installer = getRandomString(),
                     sha256 = getRandomString(),
-                    signatures = listOf(getRandomString(), getRandomString())
+                    signatures = listOf(getRandomString(), getRandomString()),
                 )
             )
             put(
                 getRandomString(), PackageMetadata(
                     time = 0L,
                     state = NOT_ALLOWED,
+                    size = 0,
                     system = Random.nextBoolean(),
                     version = Random.nextLong(),
                     installer = getRandomString(),
                     sha256 = getRandomString(),
-                    signatures = listOf(getRandomString(), getRandomString())
+                    signatures = listOf(getRandomString(), getRandomString()),
                 )
             )
         }

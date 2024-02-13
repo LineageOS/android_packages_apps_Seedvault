@@ -12,6 +12,7 @@ import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager.NameNotFoundException
+import android.text.format.Formatter
 import android.util.Log
 import androidx.core.app.NotificationCompat.Action
 import androidx.core.app.NotificationCompat.Builder
@@ -28,13 +29,15 @@ import com.stevesoltys.seedvault.settings.SettingsActivity
 import com.stevesoltys.seedvault.transport.backup.ExpectedAppTotals
 
 private const val CHANNEL_ID_OBSERVER = "NotificationBackupObserver"
+private const val CHANNEL_ID_SUCCESS = "NotificationBackupSuccess"
 private const val CHANNEL_ID_ERROR = "NotificationError"
 private const val CHANNEL_ID_RESTORE_ERROR = "NotificationRestoreError"
 private const val NOTIFICATION_ID_OBSERVER = 1
-private const val NOTIFICATION_ID_ERROR = 2
-private const val NOTIFICATION_ID_RESTORE_ERROR = 3
-private const val NOTIFICATION_ID_BACKGROUND = 4
-private const val NOTIFICATION_ID_NO_MAIN_KEY_ERROR = 5
+private const val NOTIFICATION_ID_SUCCESS = 2
+private const val NOTIFICATION_ID_ERROR = 3
+private const val NOTIFICATION_ID_RESTORE_ERROR = 4
+private const val NOTIFICATION_ID_BACKGROUND = 5
+private const val NOTIFICATION_ID_NO_MAIN_KEY_ERROR = 6
 
 private val TAG = BackupNotificationManager::class.java.simpleName
 
@@ -42,6 +45,7 @@ internal class BackupNotificationManager(private val context: Context) {
 
     private val nm = context.getSystemService(NotificationManager::class.java)!!.apply {
         createNotificationChannel(getObserverChannel())
+        createNotificationChannel(getSuccessChannel())
         createNotificationChannel(getErrorChannel())
         createNotificationChannel(getRestoreErrorChannel())
     }
@@ -52,6 +56,13 @@ internal class BackupNotificationManager(private val context: Context) {
     private fun getObserverChannel(): NotificationChannel {
         val title = context.getString(R.string.notification_channel_title)
         return NotificationChannel(CHANNEL_ID_OBSERVER, title, IMPORTANCE_LOW).apply {
+            enableVibration(false)
+        }
+    }
+
+    private fun getSuccessChannel(): NotificationChannel {
+        val title = context.getString(R.string.notification_success_channel_title)
+        return NotificationChannel(CHANNEL_ID_SUCCESS, title, IMPORTANCE_LOW).apply {
             enableVibration(false)
         }
     }
@@ -165,19 +176,20 @@ internal class BackupNotificationManager(private val context: Context) {
         }
     }
 
-    fun onBackupFinished(success: Boolean, numBackedUp: Int?) {
+    fun onBackupFinished(success: Boolean, numBackedUp: Int?, size: Long) {
         val titleRes =
             if (success) R.string.notification_success_title else R.string.notification_failed_title
         val total = expectedAppTotals?.appsTotal
         val contentText = if (numBackedUp == null || total == null) null else {
-            context.getString(R.string.notification_success_text, numBackedUp, total)
+            val sizeStr = Formatter.formatShortFileSize(context, size)
+            context.getString(R.string.notification_success_text, numBackedUp, total, sizeStr)
         }
         val iconRes = if (success) R.drawable.ic_cloud_done else R.drawable.ic_cloud_error
         val intent = Intent(context, SettingsActivity::class.java).apply {
             if (success) action = ACTION_APP_STATUS_LIST
         }
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
-        val notification = Builder(context, CHANNEL_ID_OBSERVER).apply {
+        val notification = Builder(context, CHANNEL_ID_SUCCESS).apply {
             setSmallIcon(iconRes)
             setContentTitle(context.getString(titleRes))
             setContentText(contentText)
@@ -189,7 +201,8 @@ internal class BackupNotificationManager(private val context: Context) {
             setProgress(0, 0, false)
             priority = PRIORITY_LOW
         }.build()
-        nm.notify(NOTIFICATION_ID_OBSERVER, notification)
+        nm.cancel(NOTIFICATION_ID_OBSERVER)
+        nm.notify(NOTIFICATION_ID_SUCCESS, notification)
         // reset number of expected apps
         expectedOptOutApps = null
         expectedApps = null

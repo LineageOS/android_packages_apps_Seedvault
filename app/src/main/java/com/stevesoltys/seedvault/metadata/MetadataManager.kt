@@ -17,6 +17,7 @@ import com.stevesoltys.seedvault.metadata.PackageState.APK_AND_DATA
 import com.stevesoltys.seedvault.metadata.PackageState.NOT_ALLOWED
 import com.stevesoltys.seedvault.metadata.PackageState.NO_DATA
 import com.stevesoltys.seedvault.metadata.PackageState.WAS_STOPPED
+import com.stevesoltys.seedvault.settings.SettingsManager
 import com.stevesoltys.seedvault.transport.backup.isSystemApp
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -35,6 +36,7 @@ internal class MetadataManager(
     private val crypto: Crypto,
     private val metadataWriter: MetadataWriter,
     private val metadataReader: MetadataReader,
+    private val settingsManager: SettingsManager
 ) {
 
     private val uninitializedMetadata = BackupMetadata(token = 0L, salt = "")
@@ -44,8 +46,12 @@ internal class MetadataManager(
                 field = try {
                     getMetadataFromCache() ?: throw IOException()
                 } catch (e: IOException) {
-                    // If this happens, it is hard to recover from this. Let's hope it never does.
-                    throw AssertionError("Error reading metadata from cache", e)
+                    // This can happen if the storage location ran out of space
+                    // or the app process got killed while writing the file.
+                    // It is hard to recover from this, so we try as best as we can here:
+                    Log.e(TAG, "ERROR getting metadata cache, creating new file ", e)
+                    // This should cause requiresInit() return true
+                    uninitializedMetadata.copy(version = (-1).toByte())
                 }
                 mLastBackupTime.postValue(field.time)
             }
@@ -129,22 +135,28 @@ internal class MetadataManager(
     fun onPackageBackedUp(
         packageInfo: PackageInfo,
         type: BackupType,
+        size: Long?,
         metadataOutputStream: OutputStream,
     ) {
         val packageName = packageInfo.packageName
         modifyMetadata(metadataOutputStream) {
             val now = clock.time()
             metadata.time = now
+            metadata.d2dBackup = settingsManager.d2dBackupsEnabled()
+
             if (metadata.packageMetadataMap.containsKey(packageName)) {
                 metadata.packageMetadataMap[packageName]!!.time = now
                 metadata.packageMetadataMap[packageName]!!.state = APK_AND_DATA
                 metadata.packageMetadataMap[packageName]!!.backupType = type
+                // don't override a previous K/V size, if there were no K/V changes
+                if (size != null) metadata.packageMetadataMap[packageName]!!.size = size
             } else {
                 metadata.packageMetadataMap[packageName] = PackageMetadata(
                     time = now,
                     state = APK_AND_DATA,
                     backupType = type,
-                    system = packageInfo.isSystemApp()
+                    size = size,
+                    system = packageInfo.isSystemApp(),
                 )
             }
         }
@@ -240,6 +252,11 @@ internal class MetadataManager(
                     packageMetadata.state == NO_DATA // or apps that simply had no data
                 )
         }.count()
+    }
+
+    @Synchronized
+    fun getPackagesBackupSize(): Long {
+        return metadata.packageMetadataMap.values.sumOf { it.size ?: 0L }
     }
 
     @Synchronized
