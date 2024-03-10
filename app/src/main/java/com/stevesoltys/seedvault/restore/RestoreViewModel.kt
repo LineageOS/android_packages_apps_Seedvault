@@ -15,8 +15,8 @@ import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations.switchMap
 import androidx.lifecycle.asLiveData
+import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import com.stevesoltys.seedvault.BackupMonitor
 import com.stevesoltys.seedvault.MAGIC_PACKAGE_MANAGER
@@ -39,6 +39,7 @@ import com.stevesoltys.seedvault.restore.install.isInstalled
 import com.stevesoltys.seedvault.settings.SettingsManager
 import com.stevesoltys.seedvault.storage.StorageRestoreService
 import com.stevesoltys.seedvault.transport.TRANSPORT_ID
+import com.stevesoltys.seedvault.transport.backup.NUM_PACKAGES_PER_TRANSACTION
 import com.stevesoltys.seedvault.transport.restore.RestoreCoordinator
 import com.stevesoltys.seedvault.ui.AppBackupState
 import com.stevesoltys.seedvault.ui.AppBackupState.FAILED
@@ -70,7 +71,7 @@ import java.util.LinkedList
 
 private val TAG = RestoreViewModel::class.java.simpleName
 
-internal const val PACKAGES_PER_CHUNK = 100
+internal const val PACKAGES_PER_CHUNK = NUM_PACKAGES_PER_TRANSACTION
 
 internal class RestoreViewModel(
     app: Application,
@@ -99,7 +100,7 @@ internal class RestoreViewModel(
     internal val chosenRestorableBackup: LiveData<RestorableBackup> get() = mChosenRestorableBackup
 
     internal val installResult: LiveData<InstallResult> =
-        switchMap(mChosenRestorableBackup) { backup ->
+        mChosenRestorableBackup.switchMap { backup ->
             getInstallResult(backup)
         }
     internal val installIntentCreator by lazy { InstallIntentCreator(app.packageManager) }
