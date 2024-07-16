@@ -18,6 +18,7 @@ import android.net.NetworkRequest
 import android.net.Uri
 import android.os.BadParcelableException
 import android.os.Process.myUid
+import android.os.UserHandle
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -69,7 +70,7 @@ internal class SettingsViewModel(
     app: Application,
     settingsManager: SettingsManager,
     keyManager: KeyManager,
-    private val pluginManager: StoragePluginManager,
+    pluginManager: StoragePluginManager,
     private val metadataManager: MetadataManager,
     private val appListRetriever: AppListRetriever,
     private val storageBackup: StorageBackup,
@@ -97,6 +98,9 @@ internal class SettingsViewModel(
 
     private val mAppStatusList = lastBackupTime.switchMap {
         // updates app list when lastBackupTime changes
+        // FIXME: Since we are currently updating that time a lot,
+        //  re-fetching everything on each change hammers the system hard
+        //  which can cause android.os.DeadObjectException
         getAppStatusResult()
     }
     internal val appStatusList: LiveData<AppStatusResult> = mAppStatusList
@@ -305,6 +309,8 @@ internal class SettingsViewModel(
     }
 
     fun scheduleAppBackup(existingWorkPolicy: ExistingPeriodicWorkPolicy) {
+        // disable framework scheduling, because another transport may have enabled it
+        backupManager.setFrameworkSchedulingEnabledForUser(UserHandle.myUserId(), false)
         if (!pluginManager.isOnRemovableDrive && backupManager.isBackupEnabled) {
             AppBackupWorker.schedule(app, settingsManager, existingWorkPolicy)
         }

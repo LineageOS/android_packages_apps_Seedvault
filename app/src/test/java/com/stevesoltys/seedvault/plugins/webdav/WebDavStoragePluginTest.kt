@@ -28,7 +28,6 @@ import kotlin.random.Random
 
 @RunWith(AndroidJUnit4::class)
 @Config(
-    sdk = [33], // robolectric does not support 34, yet
     application = TestApp::class
 )
 internal class WebDavStoragePluginTest : TransportTest() {
@@ -71,6 +70,10 @@ internal class WebDavStoragePluginTest : TransportTest() {
         plugin.getOutputStream(token, FILE_BACKUP_METADATA).use {
             it.write(metadata)
         }
+
+        // now we have data
+        assertTrue(plugin.hasData(token, FILE_BACKUP_METADATA))
+
         try {
             // now we have one backup matching our token
             val backups = plugin.getAvailableBackups()?.toSet() ?: fail()

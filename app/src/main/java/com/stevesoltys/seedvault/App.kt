@@ -33,6 +33,7 @@ import com.stevesoltys.seedvault.settings.AppListRetriever
 import com.stevesoltys.seedvault.settings.SettingsManager
 import com.stevesoltys.seedvault.settings.SettingsViewModel
 import com.stevesoltys.seedvault.storage.storageModule
+import com.stevesoltys.seedvault.transport.TRANSPORT_ID
 import com.stevesoltys.seedvault.transport.backup.backupModule
 import com.stevesoltys.seedvault.transport.restore.restoreModule
 import com.stevesoltys.seedvault.ui.files.FileSelectionViewModel
@@ -95,7 +96,19 @@ open class App : Application() {
             )
         }
         viewModel { RestoreStorageViewModel(this@App, get(), get(), get(), get()) }
-        viewModel { RestoreViewModel(this@App, get(), get(), get(), get(), get(), get(), get()) }
+        viewModel {
+            RestoreViewModel(
+                app = this@App,
+                settingsManager = get(),
+                keyManager = get(),
+                backupManager = get(),
+                restoreCoordinator = get(),
+                apkRestore = get(),
+                iconManager = get(),
+                storageBackup = get(),
+                pluginManager = get(),
+            )
+        }
         viewModel { FileSelectionViewModel(this@App, get()) }
     }
 
@@ -173,12 +186,14 @@ open class App : Application() {
             return
         }
 
-        backupManager.setFrameworkSchedulingEnabledForUser(UserHandle.myUserId(), false)
-        if (backupManager.isBackupEnabled && !pluginManager.isOnRemovableDrive) {
-            AppBackupWorker.schedule(applicationContext, settingsManager, UPDATE)
+        if (backupManager.currentTransport == TRANSPORT_ID) {
+            backupManager.setFrameworkSchedulingEnabledForUser(UserHandle.myUserId(), false)
+            if (backupManager.isBackupEnabled && !pluginManager.isOnRemovableDrive) {
+                AppBackupWorker.schedule(applicationContext, settingsManager, UPDATE)
+            }
+            // cancel old D2D worker
+            WorkManager.getInstance(this).cancelUniqueWork("APP_BACKUP")
         }
-        // cancel old D2D worker
-        WorkManager.getInstance(this).cancelUniqueWork("APP_BACKUP")
     }
 
     private fun isFrameworkSchedulingEnabled(): Boolean = Settings.Secure.getInt(
@@ -189,6 +204,7 @@ open class App : Application() {
 
 const val MAGIC_PACKAGE_MANAGER: String = PACKAGE_MANAGER_SENTINEL
 const val ANCESTRAL_RECORD_KEY = "@ancestral_record@"
+const val NO_DATA_END_SENTINEL = "@end@"
 const val GLOBAL_METADATA_KEY = "@meta@"
 const val ERROR_BACKUP_CANCELLED: Int = BackupManager.ERROR_BACKUP_CANCELLED
 
