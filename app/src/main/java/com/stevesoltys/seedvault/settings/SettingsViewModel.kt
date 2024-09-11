@@ -85,6 +85,7 @@ internal class SettingsViewModel(
     private val workManager = WorkManager.getInstance(app)
 
     override val isRestoreOperation = false
+    val isFirstStart get() = settingsManager.isFirstStart
 
     val isBackupRunning: StateFlow<Boolean>
     private val mBackupPossible = MutableLiveData(false)
@@ -224,12 +225,13 @@ internal class SettingsViewModel(
 
     internal fun backupNow() {
         viewModelScope.launch(Dispatchers.IO) {
+            val isAppBackupEnabled = backupManager.isBackupEnabled
             if (settingsManager.isStorageBackupEnabled()) {
                 val i = Intent(app, StorageBackupService::class.java)
-                // this starts an app backup afterwards
-                i.putExtra(EXTRA_START_APP_BACKUP, true)
+                // this starts an app backup afterwards (if enabled)
+                i.putExtra(EXTRA_START_APP_BACKUP, isAppBackupEnabled)
                 startForegroundService(app, i)
-            } else {
+            } else if (isAppBackupEnabled) {
                 AppBackupWorker.scheduleNow(app, reschedule = !pluginManager.isOnRemovableDrive)
             }
         }

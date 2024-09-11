@@ -9,7 +9,9 @@
     <string name="data_management_label">Seedvault Backup</string>
     <string name="current_destination_string">Backup status and settings</string>
 
+    <string name="first_start_text">Do you want to restore your device from an existing backup or start a new backup?</string>
     <string name="restore_backup_button">Restore backup</string>
+    <string name="setup_button">Start new</string>
 
     <!-- Settings -->
     <string name="settings_category_apps">App backup</string>
@@ -167,6 +169,9 @@
     <string name="notification_space_error_title">Insufficient backup space</string>
     <string name="notification_space_error_text">Your backup location is running out of space. Free up space, so backups can run.</string>
 
+    <string name="notification_restore_channel_title">Restore notification</string>
+    <string name="notification_restore_title">Restore running</string>
+
     <string name="notification_restore_error_channel_title">Auto restore flash drive error</string>
     <string name="notification_restore_error_title">Could not restore data for %1$s</string>
     <string name="notification_restore_error_text">Plug in your %1$s before installing the app to restore its data from backup.</string>
@@ -234,6 +239,7 @@
 
     <string name="restore_storage_skip">Skip restoring files</string>
     <string name="restore_storage_choose_snapshot">Choose a storage backup to restore (beta)</string>
+    <string name="restore_storage_selection_description">Selected files will be restored. Tap folders to see files in them.</string>
     <string name="restore_storage_in_progress_title">Files are being restored…</string>
     <string name="restore_storage_in_progress_info">Your files are being restored in the background. You can start using your phone while this is running.\n\nSome apps (e.g. Signal or WhatsApp) might require files to be fully restored to import a backup. Try to avoid starting those apps before file restore is complete.</string>
     <string name="restore_storage_got_it">Got it</string>

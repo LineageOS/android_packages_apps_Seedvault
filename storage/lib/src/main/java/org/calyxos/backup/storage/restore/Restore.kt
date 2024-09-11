@@ -22,7 +22,6 @@ import org.calyxos.backup.storage.plugin.SnapshotRetriever
 import java.io.IOException
 import java.io.InputStream
 import java.security.GeneralSecurityException
-import kotlin.time.ExperimentalTime
 
 private const val TAG = "Restore"
 
@@ -99,23 +98,22 @@ internal class Restore(
         Log.e(TAG, "Decrypting and parsing $numSnapshots snapshots took $time")
     }
 
-    @OptIn(ExperimentalTime::class)
     @Throws(IOException::class, GeneralSecurityException::class)
     suspend fun restoreBackupSnapshot(
         storedSnapshot: StoredSnapshot,
-        optionalSnapshot: BackupSnapshot? = null,
+        snapshot: BackupSnapshot,
         observer: RestoreObserver? = null,
     ) {
-        val snapshot = optionalSnapshot ?: snapshotRetriever.getSnapshot(streamKey, storedSnapshot)
-
         val filesTotal = snapshot.mediaFilesList.size + snapshot.documentFilesList.size
         val totalSize =
             snapshot.mediaFilesList.sumOf { it.size } + snapshot.documentFilesList.sumOf { it.size }
         observer?.onRestoreStart(filesTotal, totalSize)
 
         val split = FileSplitter.splitSnapshot(snapshot)
+        observer?.onFileDuplicatesRemoved(split.numRemovedDuplicates)
+        var restoredFiles = split.numRemovedDuplicates // count removed dups, so numbers add up
+
         val version = snapshot.version
-        var restoredFiles = 0
         val smallFilesDuration = measure {
             restoredFiles += zipChunkRestore.restore(
                 version,
