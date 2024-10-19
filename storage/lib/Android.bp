@@ -19,7 +19,7 @@ android_library {
         local_include_dirs: ["src/main/proto"],
     },
     static_libs: [
-        "seedvault-lib-tink-android",
+        "seedvault-lib-core",
         "libprotobuf-java-lite",
         "androidx.core_core-ktx",
         "androidx.fragment_fragment-ktx",
@@ -42,10 +42,4 @@ android_library {
     kotlincflags: [
         "-opt-in=kotlin.RequiresOptIn",
     ],
-}
-
-java_import {
-    name: "seedvault-lib-tink-android",
-    jars: ["libs/tink-android-1.10.0.jar"],
-    sdk_version: "current",
 }

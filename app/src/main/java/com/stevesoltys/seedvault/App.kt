@@ -6,6 +6,8 @@
 package com.stevesoltys.seedvault
 
 import android.Manifest.permission.INTERACT_ACROSS_USERS_FULL
+import android.app.ActivityManager
+import android.app.ActivityManager.RunningAppProcessInfo
 import android.app.Application
 import android.app.backup.BackupManager
 import android.app.backup.BackupManager.PACKAGE_MANAGER_SENTINEL
@@ -17,16 +19,18 @@ import android.os.ServiceManager.getService
 import android.os.StrictMode
 import android.os.UserHandle
 import android.os.UserManager
+import android.util.Log
 import androidx.work.ExistingPeriodicWorkPolicy.UPDATE
 import androidx.work.WorkManager
 import com.google.android.material.color.DynamicColors
+import com.stevesoltys.seedvault.MemoryLogger.getMemStr
+import com.stevesoltys.seedvault.backend.BackendManager
+import com.stevesoltys.seedvault.backend.saf.storagePluginModuleSaf
+import com.stevesoltys.seedvault.backend.webdav.storagePluginModuleWebDav
 import com.stevesoltys.seedvault.crypto.cryptoModule
 import com.stevesoltys.seedvault.header.headerModule
-import com.stevesoltys.seedvault.metadata.MetadataManager
 import com.stevesoltys.seedvault.metadata.metadataModule
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
-import com.stevesoltys.seedvault.plugins.saf.storagePluginModuleSaf
-import com.stevesoltys.seedvault.plugins.webdav.storagePluginModuleWebDav
+import com.stevesoltys.seedvault.repo.repoModule
 import com.stevesoltys.seedvault.restore.install.installModule
 import com.stevesoltys.seedvault.restore.restoreUiModule
 import com.stevesoltys.seedvault.settings.AppListRetriever
@@ -42,6 +46,7 @@ import com.stevesoltys.seedvault.ui.storage.BackupStorageViewModel
 import com.stevesoltys.seedvault.ui.storage.RestoreStorageViewModel
 import com.stevesoltys.seedvault.worker.AppBackupWorker
 import com.stevesoltys.seedvault.worker.workerModule
+import org.calyxos.seedvault.core.backends.BackendFactory
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -61,7 +66,15 @@ open class App : Application() {
     private val appModule = module {
         single { SettingsManager(this@App) }
         single { BackupNotificationManager(this@App) }
-        single { StoragePluginManager(this@App, get(), get(), get()) }
+        single { BackendManager(this@App, get(), get(), get()) }
+        single {
+            BackendFactory {
+                // uses context of the device's main user to be able to access USB storage
+                this@App.applicationContext.getStorageContext {
+                    get<SettingsManager>().getSafProperties()?.isUsb == true
+                }
+            }
+        }
         single { BackupStateManager(this@App) }
         single { Clock() }
         factory<IBackupManager> { IBackupManager.Stub.asInterface(getService(BACKUP_SERVICE)) }
@@ -72,16 +85,16 @@ open class App : Application() {
                 app = this@App,
                 settingsManager = get(),
                 keyManager = get(),
-                pluginManager = get(),
-                metadataManager = get(),
+                backendManager = get(),
                 appListRetriever = get(),
                 storageBackup = get(),
                 backupManager = get(),
-                backupInitializer = get(),
                 backupStateManager = get(),
             )
         }
-        viewModel { RecoveryCodeViewModel(this@App, get(), get(), get(), get(), get(), get()) }
+        viewModel {
+            RecoveryCodeViewModel(this@App, get(), get(), get(), get(), get(), get(), get())
+        }
         viewModel {
             BackupStorageViewModel(
                 app = this@App,
@@ -91,7 +104,7 @@ open class App : Application() {
                 safHandler = get(),
                 webDavHandler = get(),
                 settingsManager = get(),
-                storagePluginManager = get(),
+                backendManager = get(),
             )
         }
         viewModel { RestoreStorageViewModel(this@App, get(), get(), get(), get()) }
@@ -101,6 +114,7 @@ open class App : Application() {
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)
         startKoin()
+        if (!isTest) migrateToOwnScheduling()
         if (isDebugBuild()) {
             StrictMode.setThreadPolicy(
                 StrictMode.ThreadPolicy.Builder()
@@ -116,10 +130,6 @@ open class App : Application() {
                     .build()
             )
         }
-        permitDiskReads {
-            migrateTokenFromMetadataToSettingsManager()
-        }
-        if (!isTest) migrateToOwnScheduling()
     }
 
     protected open fun startKoin() = startKoin {
@@ -138,29 +148,24 @@ open class App : Application() {
         restoreModule,
         installModule,
         storageModule,
+        repoModule,
         workerModule,
         restoreUiModule,
         appModule
     )
 
     private val settingsManager: SettingsManager by inject()
-    private val metadataManager: MetadataManager by inject()
     private val backupManager: IBackupManager by inject()
-    private val pluginManager: StoragePluginManager by inject()
+    private val backendManager: BackendManager by inject()
     private val backupStateManager: BackupStateManager by inject()
 
-    /**
-     * The responsibility for the current token was moved to the [SettingsManager]
-     * in the end of 2020.
-     * This method migrates the token for existing installs and can be removed
-     * after sufficient time has passed.
-     */
-    private fun migrateTokenFromMetadataToSettingsManager() {
-        @Suppress("DEPRECATION")
-        val token = metadataManager.getBackupToken()
-        if (token != 0L && settingsManager.getToken() == null) {
-            settingsManager.setNewToken(token)
-        }
+    override fun onTrimMemory(level: Int) {
+        Log.w("Seedvault", "onTrimMemory($level) ${getMemStr()}")
+        val processInfo = RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(processInfo)
+        Log.w("Seedvault", "  lastTrimLevel: ${processInfo.lastTrimLevel}")
+        Log.w("Seedvault", "  importance: ${processInfo.importance}")
+        super.onTrimMemory(level)
     }
 
     /**
@@ -170,13 +175,13 @@ open class App : Application() {
     protected open fun migrateToOwnScheduling() {
         if (!backupStateManager.isFrameworkSchedulingEnabled) { // already on own scheduling
             // fix things for removable drive users who had a job scheduled here before
-            if (pluginManager.isOnRemovableDrive) AppBackupWorker.unschedule(applicationContext)
+            if (backendManager.isOnRemovableDrive) AppBackupWorker.unschedule(applicationContext)
             return
         }
 
         if (backupManager.currentTransport == TRANSPORT_ID) {
             backupManager.setFrameworkSchedulingEnabledForUser(UserHandle.myUserId(), false)
-            if (backupManager.isBackupEnabled && !pluginManager.isOnRemovableDrive) {
+            if (backupManager.isBackupEnabled && !backendManager.isOnRemovableDrive) {
                 AppBackupWorker.schedule(applicationContext, settingsManager, UPDATE)
             }
             // cancel old D2D worker
@@ -191,6 +196,7 @@ const val ANCESTRAL_RECORD_KEY = "@ancestral_record@"
 const val NO_DATA_END_SENTINEL = "@end@"
 const val GLOBAL_METADATA_KEY = "@meta@"
 const val ERROR_BACKUP_CANCELLED: Int = BackupManager.ERROR_BACKUP_CANCELLED
+const val ERROR_BACKUP_NOT_ALLOWED: Int = BackupManager.ERROR_BACKUP_NOT_ALLOWED
 
 fun isDebugBuild() = Build.TYPE == "eng"
 
@@ -212,6 +218,10 @@ fun <T> permitDiskReads(func: () -> T): T {
     }
 }
 
+/**
+ * Hack to allow other profiles access to USB backend.
+ * @return the context of the device's main user, so use with great care!
+ */
 @Suppress("MissingPermission")
 fun Context.getStorageContext(isUsbStorage: () -> Boolean): Context {
     if (checkSelfPermission(INTERACT_ACROSS_USERS_FULL) == PERMISSION_GRANTED && isUsbStorage()) {

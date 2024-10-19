@@ -15,28 +15,24 @@ import android.app.backup.BackupTransport.TRANSPORT_NOT_INITIALIZED
 import android.app.backup.BackupTransport.TRANSPORT_OK
 import android.app.backup.BackupTransport.TRANSPORT_PACKAGE_REJECTED
 import android.app.backup.BackupTransport.TRANSPORT_QUOTA_EXCEEDED
-import android.app.backup.RestoreSet
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.annotation.WorkerThread
-import com.stevesoltys.seedvault.Clock
-import com.stevesoltys.seedvault.MAGIC_PACKAGE_MANAGER
+import com.stevesoltys.seedvault.backend.BackendManager
 import com.stevesoltys.seedvault.metadata.BackupType
 import com.stevesoltys.seedvault.metadata.MetadataManager
 import com.stevesoltys.seedvault.metadata.PackageState
 import com.stevesoltys.seedvault.metadata.PackageState.NO_DATA
 import com.stevesoltys.seedvault.metadata.PackageState.QUOTA_EXCEEDED
 import com.stevesoltys.seedvault.metadata.PackageState.UNKNOWN_ERROR
-import com.stevesoltys.seedvault.plugins.StoragePlugin
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
-import com.stevesoltys.seedvault.plugins.isOutOfSpace
-import com.stevesoltys.seedvault.plugins.saf.FILE_BACKUP_METADATA
+import com.stevesoltys.seedvault.repo.AppBackupManager
 import com.stevesoltys.seedvault.settings.SettingsManager
 import com.stevesoltys.seedvault.ui.notification.BackupNotificationManager
+import com.stevesoltys.seedvault.ui.systemData
+import org.calyxos.seedvault.core.backends.isOutOfSpace
 import java.io.IOException
-import java.io.OutputStream
 import java.util.concurrent.TimeUnit.DAYS
 import java.util.concurrent.TimeUnit.HOURS
 
@@ -64,43 +60,30 @@ private class CoordinatorState(
 @WorkerThread
 internal class BackupCoordinator(
     private val context: Context,
-    private val pluginManager: StoragePluginManager,
+    private val backendManager: BackendManager,
+    private val appBackupManager: AppBackupManager,
     private val kv: KVBackup,
     private val full: FullBackup,
-    private val clock: Clock,
     private val packageService: PackageService,
     private val metadataManager: MetadataManager,
     private val settingsManager: SettingsManager,
     private val nm: BackupNotificationManager,
 ) {
 
-    private val plugin get() = pluginManager.appPlugin
+    private val snapshotCreator
+        get() = appBackupManager.snapshotCreator ?: error("No SnapshotCreator")
     private val state = CoordinatorState(
         calledInitialize = false,
         calledClearBackupData = false,
         cancelReason = UNKNOWN_ERROR
     )
+    private val launchableSystemApps by lazy {
+        packageService.launchableSystemApps.map { it.activityInfo.packageName }.toSet()
+    }
 
     // ------------------------------------------------------------------------------------
     // Transport initialization and quota
     //
-
-    /**
-     * Starts a new [RestoreSet] with a new token (the current unix epoch in milliseconds).
-     * Call this at least once before calling [initializeDevice]
-     * which must be called after this method to properly initialize the backup transport.
-     *
-     * @return the token of the new [RestoreSet].
-     */
-    @Throws(IOException::class)
-    private suspend fun startNewRestoreSet() {
-        val token = clock.time()
-        Log.i(TAG, "Starting new RestoreSet with token $token...")
-        settingsManager.setNewToken(token)
-        plugin.startNewRestoreSet(token)
-        Log.d(TAG, "Resetting backup metadata...")
-        metadataManager.onDeviceInitialization(token)
-    }
 
     /**
      * Initialize the storage for this device, erasing all stored data.
@@ -110,6 +93,8 @@ internal class BackupCoordinator(
      *
      * If the transport returns anything other than [TRANSPORT_OK] from this method,
      * the OS will halt the current initialize operation and schedule a retry in the near future.
+     * Attention: [finishBackup] will not be called in this case.
+     *
      * Even if the transport is in a state
      * such that attempting to "initialize" the backend storage is meaningless -
      * for example, if there is no current live data-set at all,
@@ -120,21 +105,11 @@ internal class BackupCoordinator(
      * @return One of [TRANSPORT_OK] (OK so far) or
      * [TRANSPORT_ERROR] (to retry following network error or other failure).
      */
-    suspend fun initializeDevice(): Int = try {
-        // we don't respect the intended system behavior here by always starting a new [RestoreSet]
-        // instead of simply deleting the current one
-        startNewRestoreSet()
+    fun initializeDevice(): Int {
         Log.i(TAG, "Initialize Device!")
-        plugin.initializeDevice()
-        // [finishBackup] will only be called when we return [TRANSPORT_OK] here
-        // so we remember that we initialized successfully
+        // we don't respect the intended system behavior of erasing all stored data
         state.calledInitialize = true
-        TRANSPORT_OK
-    } catch (e: Exception) {
-        Log.e(TAG, "Error initializing device", e)
-        // Show error notification if we needed init or were ready for backups
-        if (metadataManager.requiresInit || pluginManager.canDoBackupNow()) nm.onBackupError()
-        TRANSPORT_ERROR
+        return TRANSPORT_OK
     }
 
     fun isAppEligibleForBackup(
@@ -155,10 +130,15 @@ internal class BackupCoordinator(
      *                      otherwise for key-value backup.
      * @return Current limit on backup size in bytes.
      */
-    fun getBackupQuota(packageName: String, isFullBackup: Boolean): Long {
-        // report back quota
+    suspend fun getBackupQuota(packageName: String, isFullBackup: Boolean): Long {
         Log.i(TAG, "Get backup quota for $packageName. Is full backup: $isFullBackup.")
-        val quota = if (isFullBackup) full.getQuota() else kv.getQuota()
+
+        if (!isFullBackup) {
+            // hack for `adb shell bmgr backupnow`
+            // which starts with a K/V backup calling this method, so we hook in here
+            appBackupManager.ensureBackupPrepared()
+        }
+        val quota = settingsManager.quota
         Log.i(TAG, "Reported quota of $quota bytes.")
         return quota
     }
@@ -218,24 +198,13 @@ internal class BackupCoordinator(
      *  [TRANSPORT_NOT_INITIALIZED] (if the backend dataset has become lost due to
      *  inactivity purge or some other reason and needs re-initializing)
      */
-    suspend fun performIncrementalBackup(
+    fun performIncrementalBackup(
         packageInfo: PackageInfo,
         data: ParcelFileDescriptor,
         flags: Int,
     ): Int {
         state.cancelReason = UNKNOWN_ERROR
-        if (metadataManager.requiresInit) {
-            Log.w(TAG, "Metadata requires re-init!")
-            // Tell the system that we are not initialized, it will initialize us afterwards.
-            // This will start a new restore set to upgrade from legacy format
-            // by starting a clean backup with all files using the new version.
-            //
-            // This causes a backup error, but things should go back to normal afterwards.
-            return TRANSPORT_NOT_INITIALIZED
-        }
-        val token = settingsManager.getToken() ?: error("no token in performFullBackup")
-        val salt = metadataManager.salt
-        return kv.performBackup(packageInfo, data, flags, token, salt)
+        return kv.performBackup(packageInfo, data, flags)
     }
 
     // ------------------------------------------------------------------------------------
@@ -266,15 +235,13 @@ internal class BackupCoordinator(
         return result
     }
 
-    suspend fun performFullBackup(
+    fun performFullBackup(
         targetPackage: PackageInfo,
         fileDescriptor: ParcelFileDescriptor,
         flags: Int,
     ): Int {
         state.cancelReason = UNKNOWN_ERROR
-        val token = settingsManager.getToken() ?: error("no token in performFullBackup")
-        val salt = metadataManager.salt
-        return full.performFullBackup(targetPackage, fileDescriptor, flags, token, salt)
+        return full.performFullBackup(targetPackage, fileDescriptor, flags)
     }
 
     /**
@@ -303,18 +270,17 @@ internal class BackupCoordinator(
      * It needs to tear down any ongoing backup state here.
      */
     suspend fun cancelFullBackup() {
-        val packageInfo = full.getCurrentPackage()
-            ?: throw AssertionError("Cancelling full backup, but no current package")
-        Log.i(
-            TAG, "Cancel full backup of ${packageInfo.packageName}" +
-                " because of ${state.cancelReason}"
-        )
-        // don't bother with system apps that have no data
-        val ignoreApp = state.cancelReason == NO_DATA && packageInfo.isSystemApp()
+        val packageInfo = full.currentPackageInfo
+            ?: error("Cancelling full backup, but no current package")
+        val packageName = packageInfo.packageName
+        Log.i(TAG, "Cancel full backup of $packageName because of ${state.cancelReason}")
+        // don't bother with remembering state for boring system apps that have no data
+        val ignoreApp = state.cancelReason == NO_DATA &&
+            packageInfo.isSystemApp() &&
+            packageName !in systemData.keys && // don't ignore our special system apps
+            packageName !in launchableSystemApps // don't ignore launchable system apps
         if (!ignoreApp) onPackageBackupError(packageInfo, BackupType.FULL)
-        val token = settingsManager.getToken() ?: error("no token in cancelFullBackup")
-        val salt = metadataManager.salt
-        full.cancelFullBackup(token, salt, ignoreApp)
+        full.cancelFullBackup()
     }
 
     // Clear and Finish
@@ -328,23 +294,9 @@ internal class BackupCoordinator(
      *
      * @return the same error codes as [performFullBackup].
      */
-    suspend fun clearBackupData(packageInfo: PackageInfo): Int {
-        val packageName = packageInfo.packageName
-        Log.i(TAG, "Clear Backup Data of $packageName.")
-        val token = settingsManager.getToken() ?: error("no token in clearBackupData")
-        val salt = metadataManager.salt
-        try {
-            kv.clearBackupData(packageInfo, token, salt)
-        } catch (e: IOException) {
-            Log.w(TAG, "Error clearing K/V backup data for $packageName", e)
-            return TRANSPORT_ERROR
-        }
-        try {
-            full.clearBackupData(packageInfo, token, salt)
-        } catch (e: IOException) {
-            Log.w(TAG, "Error clearing full backup data for $packageName", e)
-            return TRANSPORT_ERROR
-        }
+    fun clearBackupData(packageInfo: PackageInfo): Int {
+        Log.i(TAG, "Ignoring clear backup data of ${packageInfo.packageName}.")
+        // we don't clear backup data anymore, we have snapshots and those old ones stay valid
         state.calledClearBackupData = true
         return TRANSPORT_OK
     }
@@ -358,49 +310,43 @@ internal class BackupCoordinator(
      * @return the same error codes as [performIncrementalBackup] or [performFullBackup].
      */
     suspend fun finishBackup(): Int = when {
-        kv.hasState() -> {
-            check(!full.hasState()) {
+        kv.hasState -> {
+            check(!full.hasState) {
                 "K/V backup has state, but full backup has dangling state as well"
             }
             // getCurrentPackage() not-null because we have state, call before finishing
-            val packageInfo = kv.getCurrentPackage()!!
+            val packageInfo = kv.currentPackageInfo!!
             val packageName = packageInfo.packageName
-            val size = kv.getCurrentSize()
-            // tell K/V backup to finish
-            var result = kv.finishBackup()
-            if (result == TRANSPORT_OK) {
-                val isNormalBackup = packageName != MAGIC_PACKAGE_MANAGER
-                // call onPackageBackedUp for @pm@ only if we can do backups right now
-                if (isNormalBackup || pluginManager.canDoBackupNow()) {
-                    try {
-                        onPackageBackedUp(packageInfo, BackupType.KV, size)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error calling onPackageBackedUp for $packageName", e)
-                        if (e.isOutOfSpace()) nm.onInsufficientSpaceError()
-                        result = TRANSPORT_PACKAGE_REJECTED
-                    }
-                }
+            try {
+                // tell K/V backup to finish
+                val backupData = kv.finishBackup()
+                snapshotCreator.onPackageBackedUp(packageInfo, BackupType.KV, backupData)
+                TRANSPORT_OK
+            } catch (e: Exception) {
+                Log.e(TAG, "Error finishing K/V backup for $packageName", e)
+                if (e.isOutOfSpace()) nm.onInsufficientSpaceError()
+                onPackageBackupError(packageInfo, BackupType.KV)
+                TRANSPORT_PACKAGE_REJECTED
             }
-            result
         }
-        full.hasState() -> {
-            check(!kv.hasState()) {
+        full.hasState -> {
+            check(!kv.hasState) {
                 "Full backup has state, but K/V backup has dangling state as well"
             }
             // getCurrentPackage() not-null because we have state
-            val packageInfo = full.getCurrentPackage()!!
+            val packageInfo = full.currentPackageInfo!!
             val packageName = packageInfo.packageName
-            val size = full.getCurrentSize()
             // tell full backup to finish
-            var result = full.finishBackup()
             try {
-                onPackageBackedUp(packageInfo, BackupType.FULL, size)
+                val backupData = full.finishBackup()
+                snapshotCreator.onPackageBackedUp(packageInfo, BackupType.FULL, backupData)
+                TRANSPORT_OK
             } catch (e: Exception) {
                 Log.e(TAG, "Error calling onPackageBackedUp for $packageName", e)
                 if (e.isOutOfSpace()) nm.onInsufficientSpaceError()
-                result = TRANSPORT_PACKAGE_REJECTED
+                onPackageBackupError(packageInfo, BackupType.FULL)
+                TRANSPORT_PACKAGE_REJECTED
             }
-            result
         }
         state.expectFinish -> {
             state.onFinish()
@@ -409,18 +355,10 @@ internal class BackupCoordinator(
         else -> throw IllegalStateException("Unexpected state in finishBackup()")
     }
 
-    private suspend fun onPackageBackedUp(packageInfo: PackageInfo, type: BackupType, size: Long?) {
-        plugin.getMetadataOutputStream().use {
-            metadataManager.onPackageBackedUp(packageInfo, type, size, it)
-        }
-    }
-
-    private suspend fun onPackageBackupError(packageInfo: PackageInfo, type: BackupType) {
+    private fun onPackageBackupError(packageInfo: PackageInfo, type: BackupType) {
         val packageName = packageInfo.packageName
         try {
-            plugin.getMetadataOutputStream().use {
-                metadataManager.onPackageBackupError(packageInfo, state.cancelReason, it, type)
-            }
+            metadataManager.onPackageBackupError(packageInfo, state.cancelReason, type)
         } catch (e: IOException) {
             Log.e(TAG, "Error while writing metadata for $packageName", e)
         }
@@ -430,7 +368,7 @@ internal class BackupCoordinator(
         val longBackoff = DAYS.toMillis(30)
 
         // back off if there's no storage set
-        val storage = pluginManager.storageProperties ?: return longBackoff
+        val storage = backendManager.backendProperties ?: return longBackoff
         return when {
             // back off if storage is removable and not available right now
             storage.isUnavailableUsb(context) -> longBackoff
@@ -443,12 +381,4 @@ internal class BackupCoordinator(
             else -> 0L
         }
     }
-
-    private suspend fun StoragePlugin<*>.getMetadataOutputStream(
-        token: Long? = null,
-    ): OutputStream {
-        val t = token ?: settingsManager.getToken() ?: throw IOException("no current token")
-        return getOutputStream(t, FILE_BACKUP_METADATA)
-    }
-
 }

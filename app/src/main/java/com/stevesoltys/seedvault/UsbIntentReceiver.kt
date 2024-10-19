@@ -20,14 +20,10 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract
 import android.util.Log
-import androidx.core.content.ContextCompat.startForegroundService
-import com.stevesoltys.seedvault.metadata.MetadataManager
 import com.stevesoltys.seedvault.settings.FlashDrive
 import com.stevesoltys.seedvault.settings.SettingsManager
-import com.stevesoltys.seedvault.storage.StorageBackupService
-import com.stevesoltys.seedvault.storage.StorageBackupService.Companion.EXTRA_START_APP_BACKUP
 import com.stevesoltys.seedvault.ui.storage.AUTHORITY_STORAGE
-import com.stevesoltys.seedvault.worker.AppBackupWorker
+import com.stevesoltys.seedvault.worker.BackupRequester.Companion.requestFilesAndAppBackup
 import org.koin.core.context.GlobalContext.get
 import java.util.Date
 
@@ -37,7 +33,6 @@ class UsbIntentReceiver : UsbMonitor() {
 
     // using KoinComponent would crash robolectric tests :(
     private val settingsManager: SettingsManager by lazy { get().get() }
-    private val metadataManager: MetadataManager by lazy { get().get() }
     private val backupManager: IBackupManager by lazy { get().get() }
 
     override fun shouldMonitorStatus(context: Context, action: String, device: UsbDevice): Boolean {
@@ -47,14 +42,15 @@ class UsbIntentReceiver : UsbMonitor() {
         val attachedFlashDrive = FlashDrive.from(device)
         return if (savedFlashDrive == attachedFlashDrive) {
             Log.d(TAG, "Matches stored device, checking backup time...")
-            val backupMillis = System.currentTimeMillis() - metadataManager.getLastBackupTime()
+            val lastBackupTime = settingsManager.lastBackupTime.value ?: 0
+            val backupMillis = System.currentTimeMillis() - lastBackupTime
             if (backupMillis >= settingsManager.backupFrequencyInMillis) {
                 Log.d(TAG, "Last backup older than it should be, requesting a backup...")
-                Log.d(TAG, "  ${Date(metadataManager.getLastBackupTime())}")
+                Log.d(TAG, "  ${Date(lastBackupTime)}")
                 true
             } else {
                 Log.d(TAG, "We have a recent backup, not requesting a new one.")
-                Log.d(TAG, "  ${Date(metadataManager.getLastBackupTime())}")
+                Log.d(TAG, "  ${Date(lastBackupTime)}")
                 false
             }
         } else {
@@ -64,16 +60,7 @@ class UsbIntentReceiver : UsbMonitor() {
     }
 
     override fun onStatusChanged(context: Context, action: String, device: UsbDevice) {
-        if (settingsManager.isStorageBackupEnabled()) {
-            val i = Intent(context, StorageBackupService::class.java)
-            // this starts an app backup afterwards
-            i.putExtra(EXTRA_START_APP_BACKUP, true)
-            startForegroundService(context, i)
-        } else if (backupManager.isBackupEnabled) {
-            AppBackupWorker.scheduleNow(context, reschedule = false)
-        } else {
-            Log.d(TAG, "Neither files nor app backup enabled, do nothing.")
-        }
+        requestFilesAndAppBackup(context, settingsManager, backupManager)
     }
 
 }
@@ -89,7 +76,7 @@ abstract class UsbMonitor : BroadcastReceiver() {
         if (intent.action == ACTION_USB_DEVICE_ATTACHED ||
             intent.action == ACTION_USB_DEVICE_DETACHED
         ) {
-            val device = intent.extras?.getParcelable<UsbDevice>(EXTRA_DEVICE) ?: return
+            val device = intent.extras?.getParcelable(EXTRA_DEVICE, UsbDevice::class.java) ?: return
             Log.d(TAG, "New USB mass-storage device attached.")
             device.log()
 

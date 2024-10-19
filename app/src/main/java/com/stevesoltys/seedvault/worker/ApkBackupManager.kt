@@ -11,27 +11,25 @@ import android.util.Log
 import com.stevesoltys.seedvault.metadata.MetadataManager
 import com.stevesoltys.seedvault.metadata.PackageState.NOT_ALLOWED
 import com.stevesoltys.seedvault.metadata.PackageState.WAS_STOPPED
-import com.stevesoltys.seedvault.plugins.StoragePlugin
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
-import com.stevesoltys.seedvault.plugins.isOutOfSpace
-import com.stevesoltys.seedvault.plugins.saf.FILE_BACKUP_METADATA
+import com.stevesoltys.seedvault.repo.AppBackupManager
+import com.stevesoltys.seedvault.repo.SnapshotManager
 import com.stevesoltys.seedvault.settings.SettingsManager
 import com.stevesoltys.seedvault.transport.backup.PackageService
 import com.stevesoltys.seedvault.transport.backup.isStopped
 import com.stevesoltys.seedvault.ui.notification.BackupNotificationManager
 import com.stevesoltys.seedvault.ui.notification.getAppName
-import kotlinx.coroutines.delay
+import org.calyxos.seedvault.core.backends.isOutOfSpace
 import java.io.IOException
-import java.io.OutputStream
 
 internal class ApkBackupManager(
     private val context: Context,
+    private val appBackupManager: AppBackupManager,
     private val settingsManager: SettingsManager,
+    private val snapshotManager: SnapshotManager,
     private val metadataManager: MetadataManager,
     private val packageService: PackageService,
     private val iconManager: IconManager,
     private val apkBackup: ApkBackup,
-    private val pluginManager: StoragePluginManager,
     private val nm: BackupNotificationManager,
 ) {
 
@@ -52,13 +50,6 @@ internal class ApkBackupManager(
                 backUpApks()
             }
         } finally {
-            keepTrying {
-                // upload all local changes only at the end,
-                // so we don't have to re-upload the metadata
-                pluginManager.appPlugin.getMetadataOutputStream().use { outputStream ->
-                    metadataManager.uploadMetadata(outputStream)
-                }
-            }
             nm.onApkBackupDone()
         }
     }
@@ -76,6 +67,7 @@ internal class ApkBackupManager(
         }
     }
 
+    // TODO we could use BackupMonitor for this. It emits LOG_EVENT_ID_PACKAGE_STOPPED
     private fun recordNotBackedUpPackages() {
         nm.onAppsNotBackedUp()
         packageService.notBackedUpPackages.forEach { packageInfo ->
@@ -95,59 +87,36 @@ internal class ApkBackupManager(
             } catch (e: IOException) {
                 Log.e(TAG, "Error storing new metadata for $packageName: ", e)
             }
+            // see if there's data in latest snapshot for this app and re-use it
+            // this can be helpful for backing up recently STOPPED apps
+            snapshotManager.latestSnapshot?.let { snapshot ->
+                appBackupManager.snapshotCreator?.onNoDataInCurrentRun(
+                    snapshot = snapshot,
+                    packageName = packageName,
+                    isStopped = true,
+                )
+            }
         }
     }
 
     private suspend fun uploadIcons() {
         try {
-            val token = settingsManager.getToken() ?: throw IOException("no current token")
-            pluginManager.appPlugin.getOutputStream(token, FILE_BACKUP_ICONS).use {
-                iconManager.uploadIcons(token, it)
-            }
-        } catch (e: IOException) {
+            iconManager.uploadIcons()
+        } catch (e: Exception) {
             Log.e(TAG, "Error uploading icons: ", e)
         }
     }
 
     /**
-     * Backs up an APK for the given [PackageInfo].
-     *
-     * @return true if a backup was performed and false if no backup was needed or it failed.
+     * Backs up one (or more split) APK(s) for the given [PackageInfo], if needed.
      */
-    private suspend fun backUpApk(packageInfo: PackageInfo): Boolean {
+    private suspend fun backUpApk(packageInfo: PackageInfo) {
         val packageName = packageInfo.packageName
-        return try {
-            apkBackup.backupApkIfNecessary(packageInfo) { name ->
-                val token = settingsManager.getToken() ?: throw IOException("no current token")
-                pluginManager.appPlugin.getOutputStream(token, name)
-            }?.let { packageMetadata ->
-                metadataManager.onApkBackedUp(packageInfo, packageMetadata)
-                true
-            } ?: false
+        try {
+            apkBackup.backupApkIfNecessary(packageInfo, snapshotManager.latestSnapshot)
         } catch (e: IOException) {
             Log.e(TAG, "Error while writing APK for $packageName", e)
             if (e.isOutOfSpace()) nm.onInsufficientSpaceError()
-            false
         }
-    }
-
-    private suspend fun keepTrying(n: Int = 3, block: suspend () -> Unit) {
-        for (i in 1..n) {
-            try {
-                block()
-                return
-            } catch (e: Exception) {
-                if (i == n) throw e
-                Log.e(TAG, "Error (#$i), we'll keep trying", e)
-                delay(1000)
-            }
-        }
-    }
-
-    private suspend fun StoragePlugin<*>.getMetadataOutputStream(
-        token: Long? = null,
-    ): OutputStream {
-        val t = token ?: settingsManager.getToken() ?: throw IOException("no current token")
-        return getOutputStream(t, FILE_BACKUP_METADATA)
     }
 }
