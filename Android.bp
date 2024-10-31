@@ -68,7 +68,8 @@ android_app {
         "com.stevesoltys.backup_privapp_allowlist"
     ],
     optimize: {
-        enabled: false,
+        optimize: true,
+        shrink_resources: true,
     },
 }
 
