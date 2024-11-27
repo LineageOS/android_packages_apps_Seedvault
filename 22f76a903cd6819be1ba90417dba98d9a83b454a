@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87c578b6_cde87e77",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2024-11-27T14:38:53Z",
+      "side": 1,
+      "message": "Full merge available at https://github.com/chirayudesai/backup/tree/lineage-22.0/15-5.1",
+      "revId": "22f76a903cd6819be1ba90417dba98d9a83b454a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
