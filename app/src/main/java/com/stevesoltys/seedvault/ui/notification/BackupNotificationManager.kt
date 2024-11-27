@@ -6,6 +6,8 @@
 package com.stevesoltys.seedvault.ui.notification
 
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
+import android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -15,10 +17,12 @@ import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
+import android.app.PendingIntent.getActivity
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager.NameNotFoundException
-import android.text.format.Formatter
+import android.text.format.Formatter.formatShortFileSize
 import android.util.Log
 import androidx.core.app.NotificationCompat.Action
 import androidx.core.app.NotificationCompat.Builder
@@ -34,6 +38,9 @@ import com.stevesoltys.seedvault.restore.REQUEST_CODE_UNINSTALL
 import com.stevesoltys.seedvault.restore.RestoreActivity
 import com.stevesoltys.seedvault.settings.ACTION_APP_STATUS_LIST
 import com.stevesoltys.seedvault.settings.SettingsActivity
+import com.stevesoltys.seedvault.ui.check.ACTION_FINISHED
+import com.stevesoltys.seedvault.ui.check.ACTION_SHOW
+import com.stevesoltys.seedvault.ui.check.AppCheckResultActivity
 import kotlin.math.min
 
 private const val CHANNEL_ID_OBSERVER = "NotificationBackupObserver"
@@ -42,6 +49,7 @@ private const val CHANNEL_ID_ERROR = "NotificationError"
 private const val CHANNEL_ID_RESTORE = "NotificationRestore"
 private const val CHANNEL_ID_RESTORE_ERROR = "NotificationRestoreError"
 private const val CHANNEL_ID_PRUNING = "NotificationPruning"
+private const val CHANNEL_ID_CHECKING = "NotificationChecking"
 internal const val NOTIFICATION_ID_OBSERVER = 1
 private const val NOTIFICATION_ID_SUCCESS = 2
 private const val NOTIFICATION_ID_ERROR = 3
@@ -49,7 +57,9 @@ private const val NOTIFICATION_ID_SPACE_ERROR = 4
 internal const val NOTIFICATION_ID_RESTORE = 5
 private const val NOTIFICATION_ID_RESTORE_ERROR = 6
 internal const val NOTIFICATION_ID_PRUNING = 7
-private const val NOTIFICATION_ID_NO_MAIN_KEY_ERROR = 8
+internal const val NOTIFICATION_ID_CHECKING = 8
+internal const val NOTIFICATION_ID_CHECK_FINISHED = 9
+private const val NOTIFICATION_ID_NO_MAIN_KEY_ERROR = 10
 
 private val TAG = BackupNotificationManager::class.java.simpleName
 
@@ -62,6 +72,7 @@ internal class BackupNotificationManager(private val context: Context) {
         createNotificationChannel(getRestoreChannel())
         createNotificationChannel(getRestoreErrorChannel())
         createNotificationChannel(getPruningChannel())
+        createNotificationChannel(getCheckingChannel())
     }
 
     private fun getObserverChannel(): NotificationChannel {
@@ -96,6 +107,11 @@ internal class BackupNotificationManager(private val context: Context) {
     private fun getPruningChannel(): NotificationChannel {
         val title = context.getString(R.string.notification_pruning_channel_title)
         return NotificationChannel(CHANNEL_ID_PRUNING, title, IMPORTANCE_LOW)
+    }
+
+    private fun getCheckingChannel(): NotificationChannel {
+        val title = context.getString(R.string.notification_checking_channel_title)
+        return NotificationChannel(CHANNEL_ID_CHECKING, title, IMPORTANCE_LOW)
     }
 
     /**
@@ -187,13 +203,13 @@ internal class BackupNotificationManager(private val context: Context) {
     }
 
     fun onBackupSuccess(numBackedUp: Int, total: Int, size: Long) {
-        val sizeStr = Formatter.formatShortFileSize(context, size)
+        val sizeStr = formatShortFileSize(context, size)
         val contentText =
             context.getString(R.string.notification_success_text, numBackedUp, total, sizeStr)
         val intent = Intent(context, SettingsActivity::class.java).apply {
             action = ACTION_APP_STATUS_LIST
         }
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
+        val pendingIntent = getActivity(context, 0, intent, FLAG_IMMUTABLE)
         val notification = Builder(context, CHANNEL_ID_SUCCESS).apply {
             setSmallIcon(R.drawable.ic_cloud_done)
             setContentTitle(context.getString(R.string.notification_success_title))
@@ -212,7 +228,7 @@ internal class BackupNotificationManager(private val context: Context) {
 
     fun onBackupError() {
         val intent = Intent(context, SettingsActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
+        val pendingIntent = getActivity(context, 0, intent, FLAG_IMMUTABLE)
         val notification = Builder(context, CHANNEL_ID_ERROR).apply {
             setSmallIcon(R.drawable.ic_cloud_error)
             setContentTitle(context.getString(R.string.notification_failed_title))
@@ -232,7 +248,7 @@ internal class BackupNotificationManager(private val context: Context) {
     @SuppressLint("RestrictedApi")
     fun onFixableBackupError() {
         val intent = Intent(context, SettingsActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
+        val pendingIntent = getActivity(context, 0, intent, FLAG_IMMUTABLE)
         val actionText = context.getString(R.string.notification_error_action)
         val action = Action(R.drawable.ic_storage, actionText, pendingIntent)
         val notification = Builder(context, CHANNEL_ID_ERROR).apply {
@@ -267,7 +283,7 @@ internal class BackupNotificationManager(private val context: Context) {
 
     fun getRestoreNotification() = Notification.Builder(context, CHANNEL_ID_RESTORE).apply {
         val intent = Intent(context, RestoreActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
+        val pendingIntent = getActivity(context, 0, intent, FLAG_IMMUTABLE)
         setContentIntent(pendingIntent)
         setSmallIcon(R.drawable.ic_cloud_restore)
         setContentTitle(context.getString(R.string.notification_restore_title))
@@ -314,7 +330,7 @@ internal class BackupNotificationManager(private val context: Context) {
     }
 
     fun getPruningNotification(): Notification {
-        return Builder(context, CHANNEL_ID_OBSERVER).apply {
+        return Builder(context, CHANNEL_ID_PRUNING).apply {
             setSmallIcon(R.drawable.ic_auto_delete)
             setContentTitle(context.getString(R.string.notification_pruning_title))
             setOngoing(true)
@@ -324,10 +340,87 @@ internal class BackupNotificationManager(private val context: Context) {
         }.build()
     }
 
+    fun getCheckNotification() = Builder(context, CHANNEL_ID_CHECKING).apply {
+        setSmallIcon(R.drawable.ic_cloud_search)
+        setContentTitle(context.getString(R.string.notification_checking_title))
+        setOngoing(true)
+        setShowWhen(false)
+        foregroundServiceBehavior = FOREGROUND_SERVICE_IMMEDIATE
+    }
+
+    fun showCheckNotification(speed: Long, thousandth: Int) {
+        val text = "${formatShortFileSize(context, speed)}/s"
+        val notification = getCheckNotification()
+            .setContentText(text)
+            .setProgress(1000, thousandth, false)
+            .build()
+        nm.notify(NOTIFICATION_ID_CHECKING, notification)
+    }
+
+    fun onCheckComplete(size: Long, speed: Long) {
+        val text = context.getString(
+            R.string.notification_checking_finished_text,
+            formatShortFileSize(context, size),
+            "${formatShortFileSize(context, speed)}/s",
+        )
+        val notification = getOnCheckFinishedBuilder()
+            .setContentTitle(context.getString(R.string.notification_checking_finished_title))
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_cloud_done)
+            .build()
+        nm.cancel(NOTIFICATION_ID_CHECKING)
+        nm.notify(NOTIFICATION_ID_CHECK_FINISHED, notification)
+    }
+
+    fun onCheckFinishedWithError(size: Long, speed: Long) {
+        val text = context.getString(
+            R.string.notification_checking_error_text,
+            formatShortFileSize(context, size),
+            "${formatShortFileSize(context, speed)}/s",
+        )
+        val notification = getOnCheckFinishedBuilder()
+            .setContentTitle(context.getString(R.string.notification_checking_error_title))
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_cloud_error)
+            .build()
+        nm.cancel(NOTIFICATION_ID_CHECKING)
+        nm.notify(NOTIFICATION_ID_CHECK_FINISHED, notification)
+    }
+
+    private fun getOnCheckFinishedBuilder(): Builder {
+        // the background activity launch (BAL) gets restricted for setDeleteIntent()
+        // if we don't use these special ActivityOptions, may cause issues in future SDKs
+        val options = ActivityOptions.makeBasic()
+            .setPendingIntentCreatorBackgroundActivityStartMode(
+                MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            ).toBundle()
+        val cIntent = Intent(context, AppCheckResultActivity::class.java).apply {
+            addFlags(FLAG_ACTIVITY_NEW_TASK)
+            setAction(ACTION_SHOW)
+        }
+        val dIntent = Intent(context, AppCheckResultActivity::class.java).apply {
+            addFlags(FLAG_ACTIVITY_NEW_TASK)
+            setAction(ACTION_FINISHED)
+        }
+        val contentIntent = getActivity(context, 1, cIntent, FLAG_IMMUTABLE, options)
+        val deleteIntent = getActivity(context, 2, dIntent, FLAG_IMMUTABLE, options)
+        val actionTitle = context.getString(R.string.notification_checking_action)
+        val action = Action.Builder(null, actionTitle, contentIntent).build()
+        return Builder(context, CHANNEL_ID_CHECKING)
+            .setContentIntent(contentIntent)
+            .addAction(action)
+            .setDeleteIntent(deleteIntent)
+            .setAutoCancel(true)
+    }
+
+    fun onCheckCompleteNotificationSeen() {
+        nm.cancel(NOTIFICATION_ID_CHECK_FINISHED)
+    }
+
     @SuppressLint("RestrictedApi")
     fun onNoMainKeyError() {
         val intent = Intent(context, SettingsActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, FLAG_IMMUTABLE)
+        val pendingIntent = getActivity(context, 0, intent, FLAG_IMMUTABLE)
         val actionText = context.getString(R.string.notification_error_action)
         val action = Action(0, actionText, pendingIntent)
         val notification = Builder(context, CHANNEL_ID_ERROR).apply {

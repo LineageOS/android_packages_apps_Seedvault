@@ -12,6 +12,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 @VisibleForTesting
 public abstract class BackendTest {
@@ -149,6 +150,25 @@ public abstract class BackendTest {
         val bytes = Random.nextBytes(2342)
 
         backend.remove(blob)
+        try {
+            backend.save(blob).use {
+                it.write(bytes)
+            }
+            assertContentEquals(bytes, backend.load(blob as FileHandle).readAllBytes())
+        } finally {
+            backend.remove(blob)
+        }
+    }
+
+    protected suspend fun testTestFreeSpaceAndCreateBlob() {
+        assertTrue(backend.test())
+
+        // not asserting free space as each backend may have different amounts available
+        println("Free space: ${backend.getFreeSpace()}")
+
+        val repoId = Random.nextBytes(32).toHexString()
+        val blob = AppBackupFileType.Blob(repoId, Random.nextBytes(32).toHexString())
+        val bytes = Random.nextBytes(2342)
         try {
             backend.save(blob).use {
                 it.write(bytes)

@@ -83,13 +83,13 @@ internal class Loader(
         // check SHA-256 hash first thing
         val sha256 = crypto.sha256(cipherText).toHexString()
         if (sha256 != expectedHash) {
-            throw GeneralSecurityException("File had wrong SHA-256 hash: $expectedHash")
+            throw HashMismatchException("File had wrong SHA-256 hash: $expectedHash")
         }
         // check that we can handle the version of that snapshot
         val version = cipherText[0]
         if (version <= 1) throw GeneralSecurityException("Unexpected version: $version")
         if (version > VERSION) throw UnsupportedVersionException(version)
-        // cache ciperText in cacheFile, if existing
+        // cache cipherText in cacheFile, if existing
         try {
             cacheFile?.outputStream()?.use { outputStream ->
                 outputStream.write(cipherText)
@@ -109,3 +109,5 @@ internal class Loader(
     }
 
 }
+
+internal class HashMismatchException(msg: String? = null) : GeneralSecurityException(msg)

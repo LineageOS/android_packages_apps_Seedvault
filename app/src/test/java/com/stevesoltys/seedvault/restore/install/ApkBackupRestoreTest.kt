@@ -24,6 +24,7 @@ import com.stevesoltys.seedvault.metadata.PackageMetadataMap
 import com.stevesoltys.seedvault.proto.Snapshot
 import com.stevesoltys.seedvault.repo.AppBackupManager
 import com.stevesoltys.seedvault.repo.BackupReceiver
+import com.stevesoltys.seedvault.repo.BlobCache
 import com.stevesoltys.seedvault.repo.Loader
 import com.stevesoltys.seedvault.repo.SnapshotCreator
 import com.stevesoltys.seedvault.repo.SnapshotManager
@@ -70,6 +71,7 @@ internal class ApkBackupRestoreTest : TransportTest() {
     private val backupStateManager: BackupStateManager = mockk()
     private val backupReceiver: BackupReceiver = mockk()
     private val appBackupManager: AppBackupManager = mockk()
+    private val blobCache: BlobCache = mockk()
     private val snapshotManager: SnapshotManager = mockk()
     private val snapshotCreator: SnapshotCreator = mockk()
     private val loader: Loader = mockk()
@@ -81,7 +83,8 @@ internal class ApkBackupRestoreTest : TransportTest() {
     private val apkInstaller: ApkInstaller = mockk()
     private val installRestriction: InstallRestriction = mockk()
 
-    private val apkBackup = ApkBackup(pm, backupReceiver, appBackupManager, settingsManager)
+    private val apkBackup =
+        ApkBackup(pm, backupReceiver, appBackupManager, settingsManager, blobCache)
     private val apkRestore: ApkRestore = ApkRestore(
         context = strictContext,
         backupManager = backupManager,

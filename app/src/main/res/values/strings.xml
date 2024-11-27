@@ -41,6 +41,8 @@
     <string name="settings_backup_status_next_backup_past">once conditions are fulfilled</string>
     <string name="settings_backup_status_next_backup_usb">Backups will happen automatically when you plug in your USB drive</string>
     <string name="settings_backup_scheduling_title">Backup scheduling</string>
+    <string name="settings_backup_app_check_title">Check integrity</string>
+    <string name="settings_backup_app_check_summary">Ensure that backup is working for restore</string>
     <string name="settings_backup_exclude_apps">Exclude apps</string>
     <string name="settings_backup_now">Backup now</string>
     <string name="settings_category_storage">Storage backup (beta)</string>
@@ -65,6 +67,12 @@
     <string name="settings_scheduling_category_conditions_title">Conditions</string>
     <string name="settings_scheduling_metered_title">Back up when using mobile data</string>
     <string name="settings_scheduling_charging_title">Back up only when charging</string>
+
+    <string name="settings_app_check_title">Verify app backup integrity</string>
+    <string name="settings_app_check_text">Each backup process will automatically check the backup integrity. However, to save time, actual app data will not be downloaded and verified.</string>
+    <string name="settings_app_check_text2">Here you can run a one-time check to verify your app backup. Select how much of the app data should be downloaded for the check. The more you select, the longer it will take, yet the more reliable the check will be. This will run in the background and show a notification once the check is done.</string>
+    <string name="settings_app_check_warning">Warning: Downloading large amounts of data can take a long time.</string>
+    <string name="settings_app_check_button">Check backup</string>
 
     <string name="settings_expert_title">Expert settings</string>
     <string name="settings_expert_logcat_title">Save app log</string>
@@ -179,6 +187,22 @@
     <string name="notification_pruning_channel_title">Removing old backups notification</string>
     <string name="notification_pruning_title">Removing old backups…</string>
 
+    <string name="notification_checking_channel_title">App backup integrity check</string>
+    <string name="notification_checking_title">Checking app backups…</string>
+    <string name="notification_checking_finished_title">App backup integrity verified</string>
+    <string name="notification_checking_finished_text">Successfully checked %1$s at an average speed of %2$s.</string>
+    <string name="notification_checking_error_title">Backup errors found</string>
+    <string name="notification_checking_error_text">Tap for details. We checked %1$s at an average speed of %2$s.</string>
+    <string name="notification_checking_action">Details</string>
+
+    <string name="backup_app_check_success_intro">%1$d snapshots were found and %2$d%% of their data (%3$s) successfully verified:</string>
+    <string name="backup_app_check_success_disclaimer">Note: we cannot verify whether individual apps include all of their user data in the backup.</string>
+    <string name="backup_app_check_error_title">@string/notification_checking_error_title</string>
+    <string name="backup_app_check_error_no_snapshots">We could not find any backup. Please run a successful backup first and then try checking again.</string>
+    <string name="backup_app_check_error_only_broken_snapshots">We found %1$d backup snapshots. However, all of them were corrupted. Please run a successful backup and then try checking again.</string>
+    <string name="backup_app_check_error_has_snapshots">We found %1$d backup snapshots, some of them are corrupt or have errors. Below are the backups that could be restored.</string>
+    <string name="backup_app_check_error_no_result">We lost the detailed results. Did a long time pass since running the check? Try running again.</string>
+
     <!-- App Backup and Restore State -->
 
     <string name="backup_section_system">System data</string>
@@ -188,6 +212,8 @@
     <string name="backup_contacts">Local contacts</string>
     <string name="backup_system_apps">System apps</string>
     <string name="backup_section_user">Apps</string>
+    <string name="backup_app_stopped_button">Launch</string>
+    <string name="backup_app_stopped_no_intent">Cannot launch app</string>
     <!-- This text gets shown for apps that the OS did not try to backup for whatever reason e.g. no backup was run yet -->
     <string name="backup_app_not_yet_backed_up">Waiting to back up…</string>
     <string name="restore_app_not_yet_backed_up">Was not yet backed up</string>
@@ -209,6 +235,7 @@
     <string name="restore_restore_set_apps_no_size">Has user data for <xliff:g example="42" id="apps">%1$d</xliff:g> apps</string>
     <string name="restore_restore_set_apks">Contains <xliff:g example="42" id="apps">%1$d</xliff:g> apps (<xliff:g example="1 GB" id="size">%2$s</xliff:g>)</string>
     <string name="restore_restore_set_apks_no_size">Contains <xliff:g example="42" id="apps">%1$d</xliff:g> apps</string>
+    <string name="restore_restore_set_can_not_get_restored">This backup has some errors. You may be able to restore it partly.</string>
     <string name="restore_skip">Don\'t restore</string>
     <string name="restore_skip_apps">Skip restoring apps</string>
     <string name="restore_invalid_location_title">No backups found</string>

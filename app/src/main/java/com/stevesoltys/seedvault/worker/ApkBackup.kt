@@ -19,6 +19,7 @@ import com.stevesoltys.seedvault.proto.Snapshot.Blob
 import com.stevesoltys.seedvault.proto.SnapshotKt.split
 import com.stevesoltys.seedvault.repo.AppBackupManager
 import com.stevesoltys.seedvault.repo.BackupReceiver
+import com.stevesoltys.seedvault.repo.BlobCache
 import com.stevesoltys.seedvault.repo.forProto
 import com.stevesoltys.seedvault.repo.hexFromProto
 import com.stevesoltys.seedvault.settings.SettingsManager
@@ -37,6 +38,7 @@ internal class ApkBackup(
     private val backupReceiver: BackupReceiver,
     private val appBackupManager: AppBackupManager,
     private val settingsManager: SettingsManager,
+    private val blobCache: BlobCache,
 ) {
 
     private val snapshotCreator
@@ -101,22 +103,26 @@ internal class ApkBackup(
         if (!needsBackup && oldApk != null) {
             // We could also check if there are new feature module splits to back up,
             // but we rely on the app themselves to re-download those, if needed after restore.
-            Log.d(
-                TAG, "Package $packageName with version $version" +
-                    " already has a backup ($backedUpVersion)" +
-                    " with the same signature. Not backing it up."
-            )
-            // build up blobMap from old snapshot
+
             val chunkIds = oldApk.splitsList.flatMap {
                 it.chunkIdsList.map { chunkId -> chunkId.hexFromProto() }
             }
-            val blobMap = chunkIds.associateWith { chunkId ->
-                latestSnapshot.blobsMap[chunkId] ?: error("Missing blob for $chunkId")
+            if (blobCache.containsAll(chunkIds)) {
+                Log.d(
+                    TAG, "Package $packageName with version $version" +
+                        " already has a backup ($backedUpVersion)" +
+                        " with the same signature. Not backing it up."
+                )
+                // all blobs are cached, i.e. still on backend, so no new backup needed
+                val blobMap = chunkIds.associateWith { chunkId ->
+                    latestSnapshot.blobsMap[chunkId] ?: error("Missing blob for $chunkId")
+                }
+                // important: add old APK to snapshot or it wouldn't be part of backup
+                snapshotCreator.onApkBackedUp(packageInfo, oldApk, blobMap)
+                return
+            } else {
+                Log.w(TAG, "Blobs for APKs of $packageName have issues in backend. Fixing...")
             }
-            // TODO could also check if all blobs are (still) available in BlobCache
-            // important: add old APK to snapshot or it wouldn't be part of backup
-            snapshotCreator.onApkBackedUp(packageInfo, oldApk, blobMap)
-            return
         }
 
         // builder for Apk object

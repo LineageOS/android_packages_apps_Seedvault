@@ -90,6 +90,7 @@ open class App : Application() {
                 storageBackup = get(),
                 backupManager = get(),
                 backupStateManager = get(),
+                checker = get(),
             )
         }
         viewModel {

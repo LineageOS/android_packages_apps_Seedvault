@@ -1,3 +1,8 @@
+## [15-5.1] - 2024-11-20
+* It is now possible to verify the integrity of app backups, partially or fully
+* The entire WebDAV URL is now shown when in settings
+* A launch button is now shown for apps that are force-stopped so that they can be backed up
+
 ## [15-5.0] - 2024-10-15
 * First Android 15 release
 * New backup format using compression and deduplication

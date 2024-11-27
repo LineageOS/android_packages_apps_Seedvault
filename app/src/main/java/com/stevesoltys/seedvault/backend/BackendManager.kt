@@ -25,7 +25,10 @@ class BackendManager(
     backendFactory: BackendFactory,
 ) {
 
+    @Volatile
     private var mBackend: Backend?
+
+    @Volatile
     private var mBackendProperties: BackendProperties<*>?
 
     val backend: Backend
@@ -40,6 +43,7 @@ class BackendManager(
             return mBackendProperties
         }
     val isOnRemovableDrive: Boolean get() = backendProperties?.isUsb == true
+    val requiresNetwork: Boolean get() = backendProperties?.requiresNetwork == true
 
     init {
         when (settingsManager.storagePluginType) {
@@ -81,6 +85,8 @@ class BackendManager(
      * IMPORTANT: Do no call this while current plugins are being used,
      *            e.g. while backup/restore operation is still running.
      */
+    @WorkerThread
+    @Synchronized
     fun <T> changePlugins(
         backend: Backend,
         storageProperties: BackendProperties<T>,

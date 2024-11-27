@@ -33,9 +33,10 @@ internal class PrunerTest : TransportTest() {
 
     private val backendManager: BackendManager = mockk()
     private val snapshotManager: SnapshotManager = mockk()
+    private val blobCache: BlobCache = mockk()
     private val backend: Backend = mockk()
 
-    private val pruner = Pruner(crypto, backendManager, snapshotManager)
+    private val pruner = Pruner(crypto, backendManager, snapshotManager, blobCache)
     private val folder = TopLevelFolder(repoId)
 
     private val snapshotHandle1 =
@@ -84,6 +85,7 @@ internal class PrunerTest : TransportTest() {
         blobIds.forEach {
             coEvery { backend.remove(AppBackupFileType.Blob(repoId, it)) } just Runs
         }
+        every { blobCache.onBlobsRemoved(blobIds.toSet()) } just Runs
 
         pruner.removeOldSnapshotsAndPruneUnusedBlobs()
     }
@@ -143,12 +145,14 @@ internal class PrunerTest : TransportTest() {
         // now extra blobs will get removed
         coEvery { backend.remove(AppBackupFileType.Blob(repoId, blob1)) } just Runs
         coEvery { backend.remove(AppBackupFileType.Blob(repoId, blob2)) } just Runs
+        every { blobCache.onBlobsRemoved(setOf(blob1, blob2)) } just Runs
 
         pruner.removeOldSnapshotsAndPruneUnusedBlobs()
 
         coVerify {
             backend.remove(AppBackupFileType.Blob(repoId, blob1))
             backend.remove(AppBackupFileType.Blob(repoId, blob2))
+            blobCache.onBlobsRemoved(setOf(blob1, blob2))
         }
     }
 

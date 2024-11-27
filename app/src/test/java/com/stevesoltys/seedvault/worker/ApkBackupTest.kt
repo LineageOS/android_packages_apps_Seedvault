@@ -23,7 +23,9 @@ import com.stevesoltys.seedvault.proto.copy
 import com.stevesoltys.seedvault.repo.AppBackupManager
 import com.stevesoltys.seedvault.repo.BackupData
 import com.stevesoltys.seedvault.repo.BackupReceiver
+import com.stevesoltys.seedvault.repo.BlobCache
 import com.stevesoltys.seedvault.repo.SnapshotCreator
+import com.stevesoltys.seedvault.repo.hexFromProto
 import com.stevesoltys.seedvault.transport.backup.BackupTest
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -51,9 +53,11 @@ internal class ApkBackupTest : BackupTest() {
     private val pm: PackageManager = mockk()
     private val backupReceiver: BackupReceiver = mockk()
     private val appBackupManager: AppBackupManager = mockk()
+    private val blobCache: BlobCache = mockk()
     private val snapshotCreator: SnapshotCreator = mockk()
 
-    private val apkBackup = ApkBackup(pm, backupReceiver, appBackupManager, settingsManager)
+    private val apkBackup =
+        ApkBackup(pm, backupReceiver, appBackupManager, settingsManager, blobCache)
 
     private val signatureBytes = byteArrayOf(0x01, 0x02, 0x03)
     private val signatureHash = byteArrayOf(0x03, 0x02, 0x01)
@@ -110,7 +114,9 @@ internal class ApkBackupTest : BackupTest() {
         val apk = apk.copy { versionCode = packageInfo.longVersionCode }
         val app = app { this.apk = apk }
         val s = snapshot.copy { apps.put(packageName, app) }
+        val chunkIds = apk.splitsList.flatMap { it.chunkIdsList.hexFromProto() }
         expectChecks()
+        every { blobCache.containsAll(chunkIds) } returns true
         every {
             snapshotCreator.onApkBackedUp(packageInfo, apk, blobMap)
         } just Runs
@@ -158,6 +164,47 @@ internal class ApkBackupTest : BackupTest() {
                 backupReceiver.readFromStream("APK backup $packageName ", any())
                 snapshotCreator.onApkBackedUp(packageInfo, match<Snapshot.Apk> {
                     it.signaturesList != apk.signaturesList
+                }, apkBackupData.blobMap)
+            }
+        }
+
+    @Test
+    fun `does back up the same version when blobs are missing from cache`(@TempDir tmpDir: Path) =
+        runBlocking {
+            val tmpFile = File(tmpDir.toAbsolutePath().toString())
+            packageInfo.applicationInfo!!.sourceDir = File(tmpFile, "test.apk").apply {
+                assertTrue(createNewFile())
+            }.absolutePath
+            val apk = apk.copy {
+                versionCode = packageInfo.longVersionCode
+                splits.clear()
+                splits.add(baseSplit)
+            }
+            val app = app { this.apk = apk }
+            val s = snapshot.copy { apps.put(packageName, app) }
+            val chunkIds = apk.splitsList.flatMap { it.chunkIdsList.hexFromProto() }
+            expectChecks()
+            every { blobCache.containsAll(chunkIds) } returns false // blobs missing here
+
+            every {
+                pm.getInstallSourceInfo(packageInfo.packageName)
+            } returns InstallSourceInfo(null, null, null, apk.installer)
+            coEvery {
+                backupReceiver.readFromStream("APK backup $packageName ", any())
+            } returns apkBackupData
+
+            every {
+                snapshotCreator.onApkBackedUp(packageInfo, match<Snapshot.Apk> {
+                    it.installer == apk.installer
+                }, apkBackupData.blobMap)
+            } just Runs
+
+            apkBackup.backupApkIfNecessary(packageInfo, s)
+
+            coVerify {
+                backupReceiver.readFromStream("APK backup $packageName ", any())
+                snapshotCreator.onApkBackedUp(packageInfo, match<Snapshot.Apk> {
+                    it.installer == apk.installer
                 }, apkBackupData.blobMap)
             }
         }

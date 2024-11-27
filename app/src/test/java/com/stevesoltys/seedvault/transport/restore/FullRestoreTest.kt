@@ -15,6 +15,7 @@ import com.stevesoltys.seedvault.coAssertThrows
 import com.stevesoltys.seedvault.getRandomByteArray
 import com.stevesoltys.seedvault.header.MAX_SEGMENT_LENGTH
 import com.stevesoltys.seedvault.header.VERSION
+import com.stevesoltys.seedvault.repo.HashMismatchException
 import com.stevesoltys.seedvault.repo.Loader
 import io.mockk.CapturingSlot
 import io.mockk.Runs
@@ -32,7 +33,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.FilterInputStream
 import java.io.IOException
+import java.io.SequenceInputStream
 import java.security.GeneralSecurityException
 import kotlin.random.Random
 
@@ -110,6 +113,36 @@ internal class FullRestoreTest : RestoreTest() {
         every { fileDescriptor.close() } just Runs
 
         assertEquals(TRANSPORT_ERROR, restore.getNextFullRestoreDataChunk(fileDescriptor))
+
+        verify { fileDescriptor.close() }
+    }
+
+    @Test
+    fun `reading from stream throws HashMismatchException in SequenceInputStream`() = runBlocking {
+        restore.initializeState(VERSION, packageInfo, blobHandles)
+        val bytes = getRandomByteArray()
+
+        val inputStream = SequenceInputStream(
+            ByteArrayInputStream(bytes),
+            object : FilterInputStream(ByteArrayInputStream(bytes)) {
+                override fun read(): Int {
+                    throw HashMismatchException()
+                }
+
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    throw HashMismatchException()
+                }
+            },
+        )
+        coEvery { loader.loadFiles(blobHandles) } returns inputStream
+        every { outputFactory.getOutputStream(fileDescriptor) } returns outputStream
+        every { fileDescriptor.close() } just Runs
+
+        assertEquals(bytes.size, restore.getNextFullRestoreDataChunk(fileDescriptor))
+        assertEquals(
+            TRANSPORT_PACKAGE_REJECTED,
+            restore.getNextFullRestoreDataChunk(fileDescriptor),
+        )
 
         verify { fileDescriptor.close() }
     }

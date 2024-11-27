@@ -23,6 +23,7 @@ internal class Pruner(
     private val crypto: Crypto,
     private val backendManager: BackendManager,
     private val snapshotManager: SnapshotManager,
+    private val blobCache: BlobCache,
 ) {
 
     private val log = KotlinLogging.logger {}
@@ -77,11 +78,17 @@ internal class Pruner(
                 blob.id.hexFromProto()
             }
         }.toSet()
-        blobHandles.forEach { blobHandle ->
-            if (blobHandle.name !in usedBlobIds) {
-                log.info { "Removing blob ${blobHandle.name}" }
-                backendManager.backend.remove(blobHandle)
+        val removedBlobs = mutableSetOf<String>()
+        try {
+            blobHandles.forEach { blobHandle ->
+                if (blobHandle.name !in usedBlobIds) {
+                    log.info { "Removing blob ${blobHandle.name}" }
+                    backendManager.backend.remove(blobHandle)
+                    removedBlobs.add(blobHandle.name)
+                }
             }
+        } finally {
+            if (removedBlobs.isNotEmpty()) blobCache.onBlobsRemoved(removedBlobs)
         }
     }
 

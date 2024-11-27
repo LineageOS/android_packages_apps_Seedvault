@@ -19,12 +19,14 @@ data class RestorableBackup(
     val backupMetadata: BackupMetadata,
     val repoId: String? = null,
     val snapshot: Snapshot? = null,
+    val canBeRestored: Boolean = true,
 ) {
 
-    constructor(repoId: String, snapshot: Snapshot) : this(
+    constructor(repoId: String, snapshot: Snapshot, canBeRestored: Boolean = true) : this(
         backupMetadata = BackupMetadata.fromSnapshot(snapshot),
         repoId = repoId,
         snapshot = snapshot,
+        canBeRestored = canBeRestored,
     )
 
     val name: String

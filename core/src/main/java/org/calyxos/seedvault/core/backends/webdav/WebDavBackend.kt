@@ -111,7 +111,7 @@ public class WebDavBackend(
                 log.debugLog { "getFreeSpace() = $response" }
                 val quota = response.properties.getOrNull(0) as? QuotaAvailableBytes
                 val availableBytes = quota?.quotaAvailableBytes ?: -1
-                if (availableBytes > 0) {
+                if (availableBytes >= 0) {
                     cont.resume(availableBytes)
                 } else {
                     cont.resume(null)

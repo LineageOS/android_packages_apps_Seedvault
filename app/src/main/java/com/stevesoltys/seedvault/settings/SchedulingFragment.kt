@@ -8,6 +8,7 @@ package com.stevesoltys.seedvault.settings
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
+import androidx.appcompat.widget.Toolbar
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -20,12 +21,12 @@ import com.stevesoltys.seedvault.backend.BackendManager
 import com.stevesoltys.seedvault.permitDiskReads
 import com.stevesoltys.seedvault.settings.preference.M3ListPreference
 import org.koin.android.ext.android.inject
-import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class SchedulingFragment : PreferenceFragmentCompat(),
     SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private val viewModel: SettingsViewModel by sharedViewModel()
+    private val viewModel: SettingsViewModel by activityViewModel()
     private val settingsManager: SettingsManager by inject()
     private val backendManager: BackendManager by inject()
 
@@ -38,6 +39,13 @@ class SchedulingFragment : PreferenceFragmentCompat(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        view.requireViewById<Toolbar>(R.id.toolbar).apply {
+            title = getString(R.string.settings_backup_scheduling_title)
+            setNavigationOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+        }
 
         val storage = backendManager.backendProperties
         if (storage?.isUsb == true) {
@@ -58,12 +66,6 @@ class SchedulingFragment : PreferenceFragmentCompat(),
 
             else -> super.onDisplayPreferenceDialog(preference)
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
-
-        activity?.setTitle(R.string.settings_backup_scheduling_title)
     }
 
     override fun onResume() {

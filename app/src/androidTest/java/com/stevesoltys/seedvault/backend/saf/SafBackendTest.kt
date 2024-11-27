@@ -36,4 +36,9 @@ class SafBackendTest : BackendTest(), KoinComponent {
     fun `test remove create write file`(): Unit = runBlocking {
         testRemoveCreateWriteFile()
     }
+
+    @Test
+    fun `test free space and create app blob without root folder`(): Unit = runBlocking {
+        testTestFreeSpaceAndCreateBlob()
+    }
 }

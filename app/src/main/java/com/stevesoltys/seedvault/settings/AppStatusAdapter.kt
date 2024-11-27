@@ -18,6 +18,8 @@ import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.ImageView.ScaleType
 import android.widget.TextView
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
 import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.DiffUtil.DiffResult
@@ -106,6 +108,7 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                 progressBar.visibility = INVISIBLE
                 checkBox.visibility = VISIBLE
                 checkBox.isChecked = item.enabled
+                button.visibility = GONE
             } else {
                 v.setOnClickListener(null)
                 v.setOnLongClickListener {
@@ -116,6 +119,7 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                     true
                 }
                 setState(item.status, false)
+                button.visibility = GONE
                 if (item.status == SUCCEEDED) {
                     appInfo.text = if (item.size == null) {
                         item.time.toRelativeTime(context)
@@ -135,6 +139,18 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                     appInfo.visibility = VISIBLE
                 }
                 // setState() above sets appInfo state for other cases already
+                if (item.status == FAILED_WAS_STOPPED) {
+                    button.setOnClickListener {
+                        val packageManager = context.packageManager
+                        packageManager.getLaunchIntentForPackage(item.packageName)?.let { i ->
+                            context.startActivity(i)
+                        } ?: run {
+                            val s = R.string.backup_app_stopped_no_intent
+                            Toast.makeText(context, s, LENGTH_SHORT).show()
+                        }
+                    }
+                    button.visibility = VISIBLE
+                }
                 checkBox.visibility = INVISIBLE
             }
             // show disabled items differently

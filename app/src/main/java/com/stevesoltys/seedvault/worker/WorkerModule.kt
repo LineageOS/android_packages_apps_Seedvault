@@ -33,6 +33,7 @@ val workerModule = module {
             backupReceiver = get(),
             appBackupManager = get(),
             settingsManager = get(),
+            blobCache = get(),
         )
     }
     single {

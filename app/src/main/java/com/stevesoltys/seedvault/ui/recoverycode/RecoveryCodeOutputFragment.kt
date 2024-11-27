@@ -12,16 +12,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import android.widget.Button
+import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.isDebugBuild
-import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class RecoveryCodeOutputFragment : Fragment() {
 
-    private val viewModel: RecoveryCodeViewModel by sharedViewModel()
+    private val viewModel: RecoveryCodeViewModel by activityViewModel()
 
     private lateinit var wordList: RecyclerView
     private lateinit var confirmCodeButton: Button
@@ -43,6 +44,12 @@ class RecoveryCodeOutputFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        view.requireViewById<Toolbar>(R.id.toolbar).apply {
+            setNavigationOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+        }
 
         setGridParameters(wordList)
         wordList.adapter = RecoveryCodeAdapter(viewModel.wordList)
