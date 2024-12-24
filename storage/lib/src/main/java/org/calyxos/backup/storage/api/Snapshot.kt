@@ -12,6 +12,7 @@ import org.calyxos.seedvault.core.backends.FileBackupFileType
 public data class SnapshotItem(
     public val storedSnapshot: StoredSnapshot,
     public val snapshot: BackupSnapshot?,
+    public val hasError: Boolean = false,
 ) {
     val time: Long get() = storedSnapshot.timestamp
 }

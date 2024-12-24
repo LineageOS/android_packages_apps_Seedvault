@@ -1,3 +1,9 @@
+## [15-5.2] - 2024-12-24
+* It is now possible to verify the integrity of file backups as well, partially or fully
+* Improve files backup snapshot UI
+* Allow changing backup location when USB drive isn't plugged in
+* Fix work profile USB backup
+
 ## [15-5.1] - 2024-11-20
 * It is now possible to verify the integrity of app backups, partially or fully
 * The entire WebDAV URL is now shown when in settings

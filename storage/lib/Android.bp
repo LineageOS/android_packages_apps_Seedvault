@@ -28,6 +28,7 @@ android_library {
         "androidx.lifecycle_lifecycle-viewmodel-ktx",
         "androidx.room_room-runtime",
         "androidx-constraintlayout_constraintlayout",
+        "androidx.work_work-runtime-ktx",
         "com.google.android.material_material",
         "kotlinx-coroutines-android",
         "kotlinx-coroutines-core",
@@ -39,6 +40,9 @@ android_library {
     optimize: {
         enabled: false,
     },
+    javacflags: [
+        "-Aroom.schemaLocation=packages/apps/Seedvault/storage/lib/schemas",
+    ],
     kotlincflags: [
         "-opt-in=kotlin.RequiresOptIn",
     ],

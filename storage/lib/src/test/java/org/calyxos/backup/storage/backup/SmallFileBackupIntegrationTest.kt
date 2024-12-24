@@ -22,6 +22,7 @@ import org.calyxos.backup.storage.getRandomDocFile
 import org.calyxos.backup.storage.getRandomString
 import org.calyxos.backup.storage.mockLog
 import org.calyxos.seedvault.core.backends.Backend
+import org.calyxos.seedvault.core.backends.IBackendManager
 import org.calyxos.seedvault.core.crypto.CoreCrypto.KEY_SIZE_BYTES
 import org.calyxos.seedvault.core.toHexString
 import org.junit.Assert.assertEquals
@@ -39,7 +40,7 @@ internal class SmallFileBackupIntegrationTest {
     private val filesCache: FilesCache = mockk()
     private val mac: Mac = mockk()
     private val chunksCache: ChunksCache = mockk()
-    private val backendGetter: () -> Backend = mockk()
+    private val backendManager: IBackendManager = mockk()
     private val backend: Backend = mockk()
     private val androidId: String = getRandomString()
 
@@ -47,7 +48,7 @@ internal class SmallFileBackupIntegrationTest {
         streamCrypto = StreamCrypto,
         streamKey = Random.nextBytes(KEY_SIZE_BYTES),
         chunksCache = chunksCache,
-        backendGetter = backendGetter,
+        backendManager = backendManager,
         androidId = androidId,
     )
     private val zipChunker = ZipChunker(
@@ -55,11 +56,12 @@ internal class SmallFileBackupIntegrationTest {
         chunkWriter = chunkWriter,
     )
 
-    private val smallFileBackup = SmallFileBackup(contentResolver, filesCache, zipChunker, true)
+    private val smallFileBackup =
+        SmallFileBackup(contentResolver, filesCache, chunksCache, zipChunker, true)
 
     init {
         mockLog()
-        every { backendGetter() } returns backend
+        every { backendManager.backend } returns backend
     }
 
     /**
@@ -95,6 +97,7 @@ internal class SmallFileBackupIntegrationTest {
 
         every { mac.doFinal(any<ByteArray>()) } returns chunkId
         every { chunksCache.get(any()) } returns null
+        every { chunksCache.hasCorruptedChunks(any()) } returns false
         coEvery { backend.save(any()) } returns outputStream2
         every {
             chunksCache.insert(match<CachedChunk> { cachedChunk ->

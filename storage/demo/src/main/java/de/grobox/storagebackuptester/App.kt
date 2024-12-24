@@ -15,13 +15,20 @@ import de.grobox.storagebackuptester.plugin.TestSafBackend
 import de.grobox.storagebackuptester.settings.SettingsManager
 import org.calyxos.backup.storage.api.StorageBackup
 import org.calyxos.backup.storage.ui.restore.FileSelectionManager
+import org.calyxos.seedvault.core.backends.Backend
+import org.calyxos.seedvault.core.backends.IBackendManager
 
 class App : Application() {
 
+    private val backendManager = object : IBackendManager {
+        private val plugin = TestSafBackend(this@App) { settingsManager.getBackupLocation() }
+        override val backend: Backend get() = plugin
+        override val isOnRemovableDrive: Boolean = false
+        override val requiresNetwork: Boolean = false
+    }
     val settingsManager: SettingsManager by lazy { SettingsManager(applicationContext) }
     val storageBackup: StorageBackup by lazy {
-        val plugin = TestSafBackend(this) { settingsManager.getBackupLocation() }
-        StorageBackup(this, { plugin }, KeyManager)
+        StorageBackup(this, backendManager, KeyManager)
     }
     val fileSelectionManager: FileSelectionManager get() = FileSelectionManager()
 

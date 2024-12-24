@@ -20,8 +20,8 @@ import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.settings.SettingsViewModel
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
-private const val WARN_PERCENT = 25
-private const val WARN_BYTES = 1024 * 1024 * 1024 // 1 GB
+internal const val WARN_PERCENT = 25
+internal const val WARN_BYTES = 1024 * 1024 * 1024 // 1 GB
 
 class AppCheckFragment : Fragment() {
 

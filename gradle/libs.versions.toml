@@ -124,6 +124,7 @@ coroutines = ["kotlinx-coroutines-core-jvm", "kotlinx-coroutines-android"]
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
+androidx-room  = { id = "androidx.room", version.ref = "room" }
 google-ksp  = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 google-protobuf  = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
 jetbrains-dokka  = { id = "org.jetbrains.dokka", version.ref = "dokka" }

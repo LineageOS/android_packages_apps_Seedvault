@@ -75,6 +75,9 @@ on developing Seedvault locally.
 This project aims to adhere to the
 [official Kotlin coding style](https://developer.android.com/kotlin/style-guide).
 
+### Translating
+Seedvault is translated using Weblate. It is currently under the [CalyxOS project.](https://hosted.weblate.org/projects/calyxos/)
+
 ## Third-party tools
 
 > **⚠ WARNING**: the Seedvault developers make no guarantees about external software projects.

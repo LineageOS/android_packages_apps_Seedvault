@@ -14,12 +14,14 @@ public sealed interface FilesItem {
     public val selected: Boolean
     public val size: Long
     public val lastModified: Long?
+    public val hasIssue: Boolean
 }
 
 public data class FileItem internal constructor(
     internal val file: RestorableFile,
     override val level: Int,
     override val selected: Boolean,
+    override val hasIssue: Boolean = false,
 ) : FilesItem {
     override val name: String get() = file.name
     override val dir: String get() = file.dir
@@ -35,6 +37,7 @@ public data class FolderItem(
     override val size: Long,
     override val lastModified: Long?,
     override val selected: Boolean,
+    override val hasIssue: Boolean = false,
     val partiallySelected: Boolean,
     val expanded: Boolean,
 ) : FilesItem {

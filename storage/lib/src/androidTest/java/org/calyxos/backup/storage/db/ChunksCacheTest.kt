@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -100,13 +101,13 @@ internal class ChunksCacheTest {
 
     @Test
     fun testAreAllAvailableChunksCached() {
-        assertTrue(chunksCache.areAllAvailableChunksCached(db, listOf()))
-        assertTrue(chunksCache.areAllAvailableChunksCached(db, listOf("id1")))
-        assertTrue(chunksCache.areAllAvailableChunksCached(db, listOf("id1", "id2")))
-        assertTrue(chunksCache.areAllAvailableChunksCached(db, listOf("id1", "id2", "id3")))
-        assertTrue(chunksCache.areAllAvailableChunksCached(db, listOf("id1", "id2", "id3")))
-        assertFalse(chunksCache.areAllAvailableChunksCached(db, listOf("id1", "id2", "id3", "id4")))
-        assertFalse(chunksCache.areAllAvailableChunksCached(db, listOf("foo", "bar")))
+        assertTrue(chunksCache.areAllAvailableChunksCached(listOf()))
+        assertTrue(chunksCache.areAllAvailableChunksCached(listOf("id1")))
+        assertTrue(chunksCache.areAllAvailableChunksCached(listOf("id1", "id2")))
+        assertTrue(chunksCache.areAllAvailableChunksCached(listOf("id1", "id2", "id3")))
+        assertTrue(chunksCache.areAllAvailableChunksCached(listOf("id1", "id2", "id3")))
+        assertFalse(chunksCache.areAllAvailableChunksCached(listOf("id1", "id2", "id3", "id4")))
+        assertFalse(chunksCache.areAllAvailableChunksCached(listOf("foo", "bar")))
     }
 
     @Test
@@ -116,7 +117,7 @@ internal class ChunksCacheTest {
             chunk2.copy(id = "newId2", refCount = 6),
             chunk3.copy(id = "newId3", refCount = 8)
         )
-        chunksCache.clearAndRepopulate(db, newChunks)
+        chunksCache.clearAndRepopulate(newChunks)
 
         assertNull(chunksCache.get("id1"))
         assertNull(chunksCache.get("id2"))
@@ -125,6 +126,44 @@ internal class ChunksCacheTest {
         assertThat(chunksCache.get("newId1"), equalTo(newChunks[0]))
         assertThat(chunksCache.get("newId2"), equalTo(newChunks[1]))
         assertThat(chunksCache.get("newId3"), equalTo(newChunks[2]))
+    }
+
+    @Test
+    fun testCorruption() {
+        // chunk1 and chunk3 are corrupted, need to be rewritten
+        chunksCache.markCorrupted(chunk1.id)
+        chunksCache.markCorrupted(chunk3.id)
+
+        // only chunk2 gets returned in direct queries
+        assertEquals(null, chunksCache.get(chunk1.id))
+        assertEquals(chunk2, chunksCache.get(chunk2.id))
+        assertEquals(null, chunksCache.get(chunk3.id))
+
+        // all chunks still get returned by getEvenIfCorrupted() query
+        assertEquals(chunk1.copy(corrupted = true), chunksCache.getEvenIfCorrupted(chunk1.id))
+        assertEquals(chunk2, chunksCache.getEvenIfCorrupted(chunk2.id))
+        assertEquals(chunk3.copy(corrupted = true), chunksCache.getEvenIfCorrupted(chunk3.id))
+
+        // getNumberOfCachedChunks returns corrupted chunks as well
+        val availableIds = listOf(chunk1.id, chunk2.id, chunk3.id)
+        assertEquals(3, chunksCache.getNumberOfCachedChunks(availableIds))
+        assertTrue(chunksCache.areAllAvailableChunksCached(availableIds))
+
+        // hasCorruptedChunks() returns true, if the given list includes corrupted chunks
+        assertTrue(chunksCache.hasCorruptedChunks(listOf("foo", "bar", chunk1.id)))
+        assertFalse(chunksCache.hasCorruptedChunks(listOf("foo", "bar", chunk2.id)))
+        assertTrue(chunksCache.hasCorruptedChunks(listOf("foo", "bar", chunk3.id)))
+        assertFalse(chunksCache.hasCorruptedChunks(emptyList()))
+
+        // chunk1 gets re-uploaded and thus fixed (new chunks always have 0 refCount)
+        chunksCache.insert(chunk1.copy(refCount = 0))
+
+        // now it gets returned in query (with unchanged refCount and not corrupted)
+        assertEquals(chunk1, chunksCache.get(chunk1.id))
+        assertFalse(chunksCache.get(chunk1.id)!!.corrupted)
+
+        // marking something not in DB as corrupted isn't fatal
+        chunksCache.markCorrupted("foo")
     }
 
 }

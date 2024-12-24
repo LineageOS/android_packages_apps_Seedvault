@@ -18,8 +18,8 @@ import org.calyxos.backup.storage.db.Db
 import org.calyxos.backup.storage.measure
 import org.calyxos.backup.storage.scanner.FileScanner
 import org.calyxos.backup.storage.scanner.FileScannerResult
-import org.calyxos.seedvault.core.backends.Backend
 import org.calyxos.seedvault.core.backends.FileBackupFileType
+import org.calyxos.seedvault.core.backends.IBackendManager
 import org.calyxos.seedvault.core.backends.TopLevelFolder
 import org.calyxos.seedvault.core.crypto.KeyManager
 import java.io.IOException
@@ -44,7 +44,7 @@ internal class Backup(
     private val context: Context,
     private val db: Db,
     private val fileScanner: FileScanner,
-    private val backendGetter: () -> Backend,
+    private val backendManager: IBackendManager,
     private val androidId: String,
     keyManager: KeyManager,
     private val cacheRepopulater: ChunksCacheRepopulater,
@@ -60,7 +60,7 @@ internal class Backup(
     }
 
     private val contentResolver = context.contentResolver
-    private val backend get() = backendGetter()
+    private val backend get() = backendManager.backend
     private val filesCache = db.getFilesCache()
     private val chunksCache = db.getChunksCache()
 
@@ -75,13 +75,14 @@ internal class Backup(
         throw AssertionError(e)
     }
     private val chunkWriter =
-        ChunkWriter(streamCrypto, streamKey, chunksCache, backendGetter, androidId)
+        ChunkWriter(streamCrypto, streamKey, chunksCache, backendManager, androidId)
     private val hasMediaAccessPerm =
         context.checkSelfPermission(ACCESS_MEDIA_LOCATION) == PERMISSION_GRANTED
     private val fileBackup = FileBackup(
         contentResolver = contentResolver,
         hasMediaAccessPerm = hasMediaAccessPerm,
         filesCache = filesCache,
+        chunksCache = chunksCache,
         chunker = Chunker(mac, chunkSizeMax),
         chunkWriter = chunkWriter,
     )
@@ -89,6 +90,7 @@ internal class Backup(
         contentResolver = context.contentResolver,
         hasMediaAccessPerm = hasMediaAccessPerm,
         filesCache = filesCache,
+        chunksCache = chunksCache,
         zipChunker = ZipChunker(mac, chunkWriter),
     )
 
@@ -99,13 +101,12 @@ internal class Backup(
         try {
             // get available chunks, so we do not need to rely solely on local cache
             // for checking if a chunk already exists on storage
-            val chunkIds = ArrayList<String>()
+            val availableChunkIds = mutableMapOf<String, Long>()
             val topLevelFolder = TopLevelFolder.fromAndroidId(androidId)
             backend.list(topLevelFolder, FileBackupFileType.Blob::class) { fileInfo ->
-                chunkIds.add(fileInfo.fileHandle.name)
+                availableChunkIds[fileInfo.fileHandle.name] = fileInfo.size
             }
-            val availableChunkIds = chunkIds.toHashSet()
-            if (!chunksCache.areAllAvailableChunksCached(db, availableChunkIds)) {
+            if (!chunksCache.areAllAvailableChunksCached(availableChunkIds.keys)) {
                 cacheRepopulater.repopulate(streamKey, availableChunkIds)
             }
 
@@ -123,7 +124,7 @@ internal class Backup(
             // with its old (unreferenced) chunks eventually deleted.
             // If (one of) its chunk(s) is missing, it will count as changed and chunked again.
             duration = measure {
-                backupFiles(scanResult, availableChunkIds, backupObserver)
+                backupFiles(scanResult, availableChunkIds.keys, backupObserver)
             }
             Log.e(TAG, "Changed files backup took $duration")
         } finally {
@@ -134,7 +135,7 @@ internal class Backup(
     @Throws(IOException::class, GeneralSecurityException::class)
     private suspend fun backupFiles(
         filesResult: FileScannerResult,
-        availableChunkIds: HashSet<String>,
+        availableChunkIds: Set<String>,
         backupObserver: BackupObserver?,
     ) {
         val startTime = System.currentTimeMillis()

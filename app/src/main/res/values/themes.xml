@@ -24,60 +24,6 @@
     <!-- Copied from Settings -->
     <style name="ActionPrimaryButton" parent="android:Widget.DeviceDefault.Button.Colored" />
 
-    <style name="SudHeaderTitle">
-        <item name="android:ellipsize">end</item>
-        <item name="android:maxLines">3</item>
-        <item name="android:textSize">36sp</item>
-        <item name="android:layout_marginBottom">16dp</item>
-        <item name="android:layout_marginLeft">40dp</item>
-        <item name="android:layout_marginRight">40dp</item>
-        <item name="android:lineSpacingExtra">3.67sp</item>
-        <item name="android:paddingBottom">2dp</item>
-        <item name="android:paddingTop">16dp</item>
-        <item name="android:textColor">?android:attr/textColorPrimary</item>
-    </style>
-
-    <style name="SudIconContainer">
-        <item name="android:layout_marginLeft">40dp</item>
-        <item name="android:layout_marginRight">40dp</item>
-        <item name="android:layout_marginTop">56dp</item>
-        <item name="android:maxHeight">32dp</item>
-    </style>
-
-    <style name="SudHeaderIcon">
-        <item name="android:layout_marginLeft">40dp</item>
-        <item name="android:layout_marginRight">40dp</item>
-        <item name="android:layout_marginTop">32dp</item>
-        <item name="android:layout_width">48dp</item>
-        <item name="android:layout_height">48dp</item>
-        <item name="android:scaleType">fitCenter</item>
-        <item name="android:adjustViewBounds">true</item>
-    </style>
-
-    <style name="SudDescription">
-        <item name="android:layout_gravity">top</item>
-        <item name="android:layout_marginTop">3dp</item>
-        <item name="android:layout_marginBottom">12dp</item>
-        <item name="android:layout_marginLeft">40dp</item>
-        <item name="android:layout_marginStart">40dp</item>
-        <item name="android:layout_marginRight">40dp</item>
-        <item name="android:layout_marginEnd">40dp</item>
-        <item name="android:textColor">?android:attr/textColorPrimary</item>
-        <item name="android:textDirection">locale</item>
-        <item name="android:gravity">start</item>
-        <item name="android:textAlignment">gravity</item>
-        <item name="android:lineSpacingExtra">3.67sp</item>
-    </style>
-
-    <style name="SudContent" parent="SudDescription">
-        <item name="android:layout_marginTop">32dp</item>
-        <item name="android:layout_marginBottom">6dp</item>
-        <item name="android:layout_marginStart">40dp</item>
-        <item name="android:layout_marginEnd">40dp</item>
-        <item name="android:gravity">start</item>
-        <item name="android:textAlignment">gravity</item>
-    </style>
-
     <style name="SudPrimaryButton" parent="Widget.Material3.Button.UnelevatedButton">
         <item name="android:buttonStyle">@style/SudPrimaryButton</item>
         <item name="android:theme">@style/SudPrimaryButton</item>

@@ -49,6 +49,8 @@
     <string name="settings_backup_storage_title">Backup my files</string>
     <string name="settings_backup_files_title">Included files and folders</string>
     <string name="settings_backup_files_summary">None</string>
+    <string name="settings_backup_file_check_title">Check backup integrity</string>
+    <string name="settings_backup_file_check_summary">Make sure my backup is working for restoring files</string>
     <string name="settings_backup_recovery_code">Recovery code</string>
     <string name="settings_backup_recovery_code_summary">Verify existing code or generate a new one</string>
     <string name="settings_backup_storage_dialog_title">Beta feature</string>
@@ -73,6 +75,9 @@
     <string name="settings_app_check_text2">Here you can run a one-time check to verify your app backup. Select how much of the app data should be downloaded for the check. The more you select, the longer it will take, yet the more reliable the check will be. This will run in the background and show a notification once the check is done.</string>
     <string name="settings_app_check_warning">Warning: Downloading large amounts of data can take a long time.</string>
     <string name="settings_app_check_button">Check backup</string>
+    <string name="settings_file_check_title">Verify file backup integrity</string>
+    <string name="settings_file_check_text">Here you can run a one-time check to verify your file backup.</string>
+    <string name="settings_file_check_text2">Select how much of file data should be downloaded for the check. The more you select, the longer it will take, yet the more reliable the check will be.\n\nThe check will run in the background and send you a notification once it is done.</string>
 
     <string name="settings_expert_title">Expert settings</string>
     <string name="settings_expert_logcat_title">Save app log</string>
@@ -197,7 +202,7 @@
 
     <string name="backup_app_check_success_intro">%1$d snapshots were found and %2$d%% of their data (%3$s) successfully verified:</string>
     <string name="backup_app_check_success_disclaimer">Note: we cannot verify whether individual apps include all of their user data in the backup.</string>
-    <string name="backup_app_check_error_title">@string/notification_checking_error_title</string>
+    <string name="backup_app_check_error_title" translatable="false">@string/notification_checking_error_title</string>
     <string name="backup_app_check_error_no_snapshots">We could not find any backup. Please run a successful backup first and then try checking again.</string>
     <string name="backup_app_check_error_only_broken_snapshots">We found %1$d backup snapshots. However, all of them were corrupted. Please run a successful backup and then try checking again.</string>
     <string name="backup_app_check_error_has_snapshots">We found %1$d backup snapshots, some of them are corrupt or have errors. Below are the backups that could be restored.</string>

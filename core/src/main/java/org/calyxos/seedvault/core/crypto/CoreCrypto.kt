@@ -60,4 +60,18 @@ public object CoreCrypto {
         ).newDecryptingStream(inputStream, associatedData)
     }
 
+    private val onlyForSizeCalculation: AesGcmHkdfStreaming by lazy {
+        AesGcmHkdfStreaming(
+            ByteArray(KEY_SIZE_BYTES),
+            ALGORITHM_HMAC,
+            KEY_SIZE_BYTES,
+            SIZE_SEGMENT,
+            0,
+        )
+    }
+
+    public fun expectedCiphertextSize(size: Long): Long {
+        return onlyForSizeCalculation.expectedCiphertextSize(size)
+    }
+
 }

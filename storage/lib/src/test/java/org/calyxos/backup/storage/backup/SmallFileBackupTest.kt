@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import org.calyxos.backup.storage.content.ContentFile
 import org.calyxos.backup.storage.content.DocFile
 import org.calyxos.backup.storage.db.CachedFile
+import org.calyxos.backup.storage.db.ChunksCache
 import org.calyxos.backup.storage.db.FilesCache
 import org.calyxos.backup.storage.getRandomDocFile
 import org.calyxos.backup.storage.getRandomString
@@ -30,9 +31,11 @@ internal class SmallFileBackupTest {
 
     private val contentResolver: ContentResolver = mockk()
     private val filesCache: FilesCache = mockk()
+    private val chunksCache: ChunksCache = mockk()
     private val zipChunker: ZipChunker = mockk()
 
-    private val smallFileBackup = SmallFileBackup(contentResolver, filesCache, zipChunker, true)
+    private val smallFileBackup =
+        SmallFileBackup(contentResolver, filesCache, chunksCache, zipChunker, true)
 
     private val fileInputStream: InputStream = mockk()
 
@@ -48,6 +51,7 @@ internal class SmallFileBackupTest {
         val backupFile = files[0].toBackupFile(cachedFile.chunks, cachedFile.zipIndex)
 
         every { filesCache.getByUri(files[0].uri) } returns cachedFile
+        every { chunksCache.hasCorruptedChunks(cachedFile.chunks) } returns false
 
         val result = smallFileBackup.backupFiles(files, availableChunkIds, null)
         assertEquals(cachedFile.chunks.toSet(), result.chunkIds)
@@ -87,10 +91,22 @@ internal class SmallFileBackupTest {
         singleFileBackup(files, cachedFile, availableChunkIds)
     }
 
+    @Test
+    fun `unchanged file with corrupted chunks gets backed up again`(): Unit = runBlocking {
+        val files = listOf(getRandomDocFile())
+        val availableChunkIds = hashSetOf(getRandomString(6), getRandomString(6))
+        val cachedFile = files[0].toCachedFile(availableChunkIds.toList(), 1)
+
+        every { filesCache.getByUri(files[0].uri) } returns cachedFile
+
+        singleFileBackup(files, cachedFile, availableChunkIds, corrupted = true)
+    }
+
     private suspend fun singleFileBackup(
         files: List<DocFile>,
         cachedFile: CachedFile?,
         availableChunkIds: HashSet<String>,
+        corrupted: Boolean = false,
     ) {
         val file = files[0]
         val zipChunk = ZipChunk(getRandomString(6), listOf(file), Random.nextLong(), true)
@@ -99,7 +115,7 @@ internal class SmallFileBackupTest {
         val missingChunks =
             if (cachedFile == null) emptyList() else cachedFile.chunks - availableChunkIds
 
-        addFile(file, cachedFile)
+        addFile(file, cachedFile, corrupted)
         coEvery { zipChunker.finalizeAndReset(missingChunks) } returns zipChunk
         every { filesCache.upsert(sameCachedFile(newCachedFile)) } just Runs
 
@@ -209,8 +225,15 @@ internal class SmallFileBackupTest {
         assertEquals(0, result.backupMediaFiles.size)
     }
 
-    private fun addFile(file: ContentFile, cachedFile: CachedFile? = null) {
+    private fun addFile(
+        file: ContentFile,
+        cachedFile: CachedFile? = null,
+        corrupted: Boolean = false,
+    ) {
         every { filesCache.getByUri(file.uri) } returns cachedFile
+        every {
+            chunksCache.hasCorruptedChunks(cachedFile?.chunks ?: emptyList())
+        } returns corrupted
         every { contentResolver.openInputStream(file.uri) } returns fileInputStream
         every { zipChunker.addFile(file, fileInputStream) } just Runs
         every { fileInputStream.close() } just Runs

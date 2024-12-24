@@ -8,21 +8,21 @@ package org.calyxos.backup.storage.restore
 import org.calyxos.backup.storage.api.RestoreObserver
 import org.calyxos.backup.storage.api.StoredSnapshot
 import org.calyxos.backup.storage.crypto.StreamCrypto
-import org.calyxos.seedvault.core.backends.Backend
 import org.calyxos.seedvault.core.backends.FileBackupFileType.Blob
+import org.calyxos.seedvault.core.backends.IBackendManager
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.GeneralSecurityException
 
 internal abstract class AbstractChunkRestore(
-    private val backendGetter: () -> Backend,
+    private val backendManager: IBackendManager,
     private val fileRestore: FileRestore,
     private val streamCrypto: StreamCrypto,
     private val streamKey: ByteArray,
 ) {
 
-    private val backend get() = backendGetter()
+    private val backend get() = backendManager.backend
 
     @Throws(IOException::class, GeneralSecurityException::class)
     protected suspend fun getAndDecryptChunk(

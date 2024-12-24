@@ -69,12 +69,19 @@
 
         <androidx.preference.Preference
             android:dependency="backup_storage"
-            app:dependency="backup_storage"
             app:fragment="com.stevesoltys.seedvault.ui.files.FileSelectionFragment"
             app:icon="@drawable/ic_library_add"
             app:key="backup_files"
             app:summary="@string/settings_backup_files_summary"
             app:title="@string/settings_backup_files_title" />
+
+        <androidx.preference.Preference
+            android:dependency="backup_storage"
+            app:fragment="com.stevesoltys.seedvault.ui.check.FileCheckFragment"
+            app:icon="@drawable/ic_cloud_search"
+            app:key="backup_file_check"
+            app:summary="@string/settings_backup_file_check_summary"
+            app:title="@string/settings_backup_file_check_title" />
 
     </PreferenceCategory>
 

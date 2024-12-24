@@ -14,7 +14,6 @@ import android.provider.Settings
 import android.provider.Settings.Secure.ANDROID_ID
 import android.util.Log
 import androidx.annotation.WorkerThread
-import androidx.room.Room
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +22,7 @@ import org.calyxos.backup.storage.SnapshotRetriever
 import org.calyxos.backup.storage.backup.Backup
 import org.calyxos.backup.storage.backup.BackupSnapshot
 import org.calyxos.backup.storage.backup.ChunksCacheRepopulater
+import org.calyxos.backup.storage.check.Checker
 import org.calyxos.backup.storage.db.Db
 import org.calyxos.backup.storage.getCurrentBackupSnapshots
 import org.calyxos.backup.storage.getMediaType
@@ -36,6 +36,7 @@ import org.calyxos.backup.storage.scanner.MediaScanner
 import org.calyxos.backup.storage.toStoredUri
 import org.calyxos.seedvault.core.backends.Backend
 import org.calyxos.seedvault.core.backends.FileBackupFileType
+import org.calyxos.seedvault.core.backends.IBackendManager
 import org.calyxos.seedvault.core.backends.saf.getDocumentPath
 import org.calyxos.seedvault.core.crypto.KeyManager
 import java.io.IOException
@@ -45,25 +46,25 @@ private const val TAG = "StorageBackup"
 
 public class StorageBackup(
     private val context: Context,
-    private val pluginGetter: () -> Backend,
+    private val backendManager: IBackendManager,
     private val keyManager: KeyManager,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
     private val db: Db by lazy {
-        Room.databaseBuilder(context, Db::class.java, "seedvault-storage-local-cache")
-            .build()
+        Db.build(context)
     }
     private val uriStore by lazy { db.getUriStore() }
+    private val backend get() = backendManager.backend
 
     @SuppressLint("HardwareIds")
     private val androidId = Settings.Secure.getString(context.contentResolver, ANDROID_ID)
 
     private val mediaScanner by lazy { MediaScanner(context) }
-    private val snapshotRetriever = SnapshotRetriever(pluginGetter)
+    private val snapshotRetriever = SnapshotRetriever(backendManager)
     private val chunksCacheRepopulater = ChunksCacheRepopulater(
-        db = db,
-        storagePlugin = pluginGetter,
+        chunksCache = db.getChunksCache(),
+        backendManager = backendManager,
         androidId = androidId,
         snapshotRetriever = snapshotRetriever,
     )
@@ -74,7 +75,7 @@ public class StorageBackup(
             context = context,
             db = db,
             fileScanner = fileScanner,
-            backendGetter = pluginGetter,
+            backendManager = backendManager,
             androidId = androidId,
             keyManager = keyManager,
             cacheRepopulater = chunksCacheRepopulater
@@ -82,15 +83,29 @@ public class StorageBackup(
     }
     private val restore by lazy {
         val fileRestore = FileRestore(context, mediaScanner)
-        Restore(context, pluginGetter, keyManager, snapshotRetriever, fileRestore)
+        Restore(context, backendManager, keyManager, snapshotRetriever, fileRestore)
     }
     private val retention = RetentionManager(context)
     private val pruner by lazy {
-        Pruner(db, retention, pluginGetter, androidId, keyManager, snapshotRetriever)
+        Pruner(db, retention, backendManager, androidId, keyManager, snapshotRetriever)
+    }
+    private val checker by lazy {
+        Checker(
+            db = db,
+            backendManager = backendManager,
+            snapshotRetriever = snapshotRetriever,
+            keyManager = keyManager,
+            cacheRepopulater = chunksCacheRepopulater,
+            androidId = androidId,
+        )
     }
 
     private val backupRunning = AtomicBoolean(false)
     private val restoreRunning = AtomicBoolean(false)
+    private val checkRunning = AtomicBoolean(false)
+
+    public var checkResult: CheckResult? = null
+        private set
 
     public val uris: Set<Uri>
         @WorkerThread
@@ -146,12 +161,12 @@ public class StorageBackup(
      * Using the same root folder for storage on different devices or user profiles is fine though
      * as the [Backend] should isolate storage per [StoredSnapshot.userId].
      */
-    public suspend fun deleteAllSnapshots(): Unit = withContext(dispatcher) {
+    private suspend fun deleteAllSnapshots(): Unit = withContext(dispatcher) {
         try {
-            pluginGetter().getCurrentBackupSnapshots(androidId).forEach {
+            backend.getCurrentBackupSnapshots(androidId).forEach {
                 val handle = FileBackupFileType.Snapshot(androidId, it.timestamp)
                 try {
-                    pluginGetter().remove(handle)
+                    backend.remove(handle)
                 } catch (e: IOException) {
                     Log.e(TAG, "Error deleting snapshot $it", e)
                 }
@@ -171,8 +186,8 @@ public class StorageBackup(
 
     public suspend fun runBackup(backupObserver: BackupObserver?): Boolean =
         withContext(dispatcher) {
-            if (backupRunning.getAndSet(true)) {
-                Log.w(TAG, "Backup already running, not starting a new one")
+            if (checkRunning.get() || !backupRunning.compareAndSet(false, true)) {
+                Log.w(TAG, "Backup or check already running, not starting a new one")
                 return@withContext false
             }
             try {
@@ -230,7 +245,7 @@ public class StorageBackup(
         snapshot: BackupSnapshot,
         restoreObserver: RestoreObserver? = null,
     ): Boolean = withContext(dispatcher) {
-        if (restoreRunning.getAndSet(true)) {
+        if (!restoreRunning.compareAndSet(false, true)) {
             Log.w(TAG, "Restore already running, not starting a new one")
             return@withContext false
         }
@@ -243,6 +258,33 @@ public class StorageBackup(
         } finally {
             restoreRunning.set(false)
         }
+    }
+
+    public fun getBackupSize(): Long {
+        return checker.getBackupSize()
+    }
+
+    public suspend fun checkBackups(percent: Int, checkObserver: CheckObserver?): Boolean {
+        check(percent in 0..100) { "Invalid percentage: $percent" }
+        if (checkRunning.get() || backupRunning.get()) {
+            Log.w(TAG, "Check or backup already running, not starting a new one")
+            return false
+        }
+        checkResult = withContext(dispatcher) {
+            checkRunning.set(true)
+            try {
+                checkObserver?.onStartChecking()
+                checker.check(percent, checkObserver)
+            } finally {
+                checkRunning.set(false)
+            }
+        }
+        return true
+    }
+
+    public fun clearCheckResult() {
+        Log.i(TAG, "Clearing check result...")
+        checkResult = null
     }
 
 }

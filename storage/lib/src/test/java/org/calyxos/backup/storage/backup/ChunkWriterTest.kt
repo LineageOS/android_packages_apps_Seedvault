@@ -19,6 +19,7 @@ import org.calyxos.backup.storage.getRandomString
 import org.calyxos.backup.storage.mockLog
 import org.calyxos.seedvault.core.backends.Backend
 import org.calyxos.seedvault.core.backends.FileBackupFileType.Blob
+import org.calyxos.seedvault.core.backends.IBackendManager
 import org.calyxos.seedvault.core.crypto.CoreCrypto.KEY_SIZE_BYTES
 import org.calyxos.seedvault.core.toHexString
 import org.junit.Assert.assertArrayEquals
@@ -32,7 +33,7 @@ internal class ChunkWriterTest {
 
     private val streamCrypto: StreamCrypto = mockk()
     private val chunksCache: ChunksCache = mockk()
-    private val backendGetter: () -> Backend = mockk()
+    private val backendManager: IBackendManager = mockk()
     private val backend: Backend = mockk()
     private val androidId: String = getRandomString()
     private val streamKey: ByteArray = Random.nextBytes(KEY_SIZE_BYTES)
@@ -43,7 +44,7 @@ internal class ChunkWriterTest {
         streamCrypto = streamCrypto,
         streamKey = streamKey,
         chunksCache = chunksCache,
-        backendGetter = backendGetter,
+        backendManager = backendManager,
         androidId = androidId,
         bufferSize = Random.nextInt(1, 42),
     )
@@ -54,7 +55,7 @@ internal class ChunkWriterTest {
 
     init {
         mockLog()
-        every { backendGetter() } returns backend
+        every { backendManager.backend } returns backend
     }
 
     @Test
@@ -213,15 +214,15 @@ internal class ChunkWriterTest {
         }
 
         // check that output matches chunk data
-        assertEquals(1 + chunks[0].size.toInt(), chunk1Output.size())
+        assertEquals(1 + chunks[0].plaintextSize.toInt(), chunk1Output.size())
         assertArrayEquals(
             chunk1Bytes,
-            chunk1Output.toByteArray().copyOfRange(1, 1 + chunks[0].size.toInt())
+            chunk1Output.toByteArray().copyOfRange(1, 1 + chunks[0].plaintextSize.toInt())
         )
-        assertEquals(1 + chunks[2].size.toInt(), chunk3Output.size())
+        assertEquals(1 + chunks[2].plaintextSize.toInt(), chunk3Output.size())
         assertArrayEquals(
             chunk3Bytes,
-            chunk3Output.toByteArray().copyOfRange(1, 1 + chunks[2].size.toInt())
+            chunk3Output.toByteArray().copyOfRange(1, 1 + chunks[2].plaintextSize.toInt())
         )
     }
 

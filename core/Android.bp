@@ -10,6 +10,9 @@ android_library {
         "src/main/java/**/*.kt",
         "src/main/java/**/*.java",
     ],
+    resource_dirs: [
+        "src/main/res",
+    ],
     exclude_srcs: [
         "src/main/java/org/calyxos/seedvault/core/backends/BackendTest.kt",
     ],
