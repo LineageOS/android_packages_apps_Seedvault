@@ -23,7 +23,7 @@ import android.util.Log
 import androidx.work.ExistingPeriodicWorkPolicy.UPDATE
 import androidx.work.WorkManager
 import com.google.android.material.color.DynamicColors
-import com.stevesoltys.seedvault.MemoryLogger.getMemStr
+import org.calyxos.seedvault.core.MemoryLogger.getMemStr
 import com.stevesoltys.seedvault.backend.BackendManager
 import com.stevesoltys.seedvault.backend.saf.storagePluginModuleSaf
 import com.stevesoltys.seedvault.backend.webdav.storagePluginModuleWebDav
@@ -192,7 +192,8 @@ const val GLOBAL_METADATA_KEY = "@meta@"
 const val ERROR_BACKUP_CANCELLED: Int = BackupManager.ERROR_BACKUP_CANCELLED
 const val ERROR_BACKUP_NOT_ALLOWED: Int = BackupManager.ERROR_BACKUP_NOT_ALLOWED
 
-fun isDebugBuild() = Build.TYPE == "eng"
+// TODO this doesn't work for LineageOS as they do public debug builds
+fun isDebugBuild() = Build.TYPE == "userdebug"
 
 fun <T> permitDiskReads(func: () -> T): T {
     return if (isDebugBuild()) {
