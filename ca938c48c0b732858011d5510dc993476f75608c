@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d9f6989_a9f9b9f9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2025-02-19T13:37:43Z",
+      "side": 1,
+      "message": "Not sure why it conflicted, resolved using upstream.\n\nPushed to https://github.com/chirayudesai/backup/tree/lineage-22.1/15-5.3",
+      "revId": "ca938c48c0b732858011d5510dc993476f75608c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
