@@ -16,6 +16,24 @@
       "message": "To be replaced by upstream commit",
       "revId": "89446eac9223672695d0d089cc51591138122f6e",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec5c2d3d_24302d77",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2025-03-13T23:12:44Z",
+      "side": 1,
+      "message": "can merge upstream tag 15-5.4 now",
+      "parentUuid": "5845814d_bda3d0d0",
+      "revId": "89446eac9223672695d0d089cc51591138122f6e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
