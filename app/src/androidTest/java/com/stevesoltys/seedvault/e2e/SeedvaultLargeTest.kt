@@ -7,7 +7,6 @@ package com.stevesoltys.seedvault.e2e
 
 import android.content.pm.PackageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -46,23 +45,11 @@ internal abstract class SeedvaultLargeTest :
         clearTestBackups()
 
         runCommand("bmgr enable true")
-        sleep(60_000)
         runCommand("bmgr transport com.stevesoltys.seedvault.transport.ConfigurableBackupTransport")
-        sleep(60_000)
+        sleep(5000)
 
         startRecordingTest(keepRecordingScreen, name.methodName)
         restoreBaselineBackup()
-
-        val arguments = InstrumentationRegistry.getArguments()
-
-        if (arguments.getString("d2d_backup_test") == "true") {
-            println("Enabling D2D backups for test")
-            settingsManager.setD2dBackupsEnabled(true)
-
-        } else {
-            println("Disabling D2D backups for test")
-            settingsManager.setD2dBackupsEnabled(false)
-        }
     }
 
     @After

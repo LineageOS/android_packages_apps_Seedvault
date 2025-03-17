@@ -5,10 +5,12 @@
 
 package com.stevesoltys.seedvault.storage
 
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
+import com.stevesoltys.seedvault.backend.BackendManager
+import com.stevesoltys.seedvault.crypto.KeyManager
 import org.calyxos.backup.storage.api.StorageBackup
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val storageModule = module {
-    single { StorageBackup(get(), { get<StoragePluginManager>().filesPlugin }) }
+    single { StorageBackup(androidContext(), get<BackendManager>(), get<KeyManager>()) }
 }

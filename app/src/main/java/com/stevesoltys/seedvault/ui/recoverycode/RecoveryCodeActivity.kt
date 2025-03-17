@@ -6,7 +6,6 @@
 package com.stevesoltys.seedvault.ui.recoverycode
 
 import android.os.Bundle
-import android.view.MenuItem
 import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.isDebugBuild
@@ -26,29 +25,19 @@ class RecoveryCodeActivity : BackupActivity() {
         setContentView(R.layout.activity_recovery_code)
 
         viewModel.isRestore = isRestore()
-        viewModel.confirmButtonClicked.observeEvent(this, { clicked ->
+        viewModel.confirmButtonClicked.observeEvent(this) { clicked ->
             if (clicked) showInput(true)
-        })
-        viewModel.recoveryCodeSaved.observeEvent(this, { saved ->
+        }
+        viewModel.recoveryCodeSaved.observeEvent(this) { saved ->
             if (saved) {
                 setResult(RESULT_OK)
                 finishAfterTransition()
             }
-        })
+        }
 
         if (savedInstanceState == null) {
             if (viewModel.isRestore) showInput(false)
             else showOutput()
-        }
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                onBackPressed()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
         }
     }
 

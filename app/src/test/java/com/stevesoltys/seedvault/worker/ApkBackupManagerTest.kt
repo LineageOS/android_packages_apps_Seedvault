@@ -10,18 +10,18 @@ import android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP
 import android.content.pm.ApplicationInfo.FLAG_INSTALLED
 import android.content.pm.ApplicationInfo.FLAG_STOPPED
 import android.content.pm.PackageInfo
+import com.stevesoltys.seedvault.backend.BackendManager
 import com.stevesoltys.seedvault.metadata.PackageMetadata
 import com.stevesoltys.seedvault.metadata.PackageState.NOT_ALLOWED
 import com.stevesoltys.seedvault.metadata.PackageState.UNKNOWN_ERROR
 import com.stevesoltys.seedvault.metadata.PackageState.WAS_STOPPED
-import com.stevesoltys.seedvault.plugins.StoragePlugin
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
-import com.stevesoltys.seedvault.plugins.saf.FILE_BACKUP_METADATA
+import com.stevesoltys.seedvault.repo.AppBackupManager
+import com.stevesoltys.seedvault.repo.SnapshotCreator
+import com.stevesoltys.seedvault.repo.SnapshotManager
 import com.stevesoltys.seedvault.transport.TransportTest
 import com.stevesoltys.seedvault.transport.backup.PackageService
 import com.stevesoltys.seedvault.ui.notification.BackupNotificationManager
 import io.mockk.Runs
-import io.mockk.andThenJust
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -31,35 +31,36 @@ import io.mockk.verify
 import io.mockk.verifyAll
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.OutputStream
+import org.junit.jupiter.api.assertThrows
 
 internal class ApkBackupManagerTest : TransportTest() {
 
+    private val appBackupManager: AppBackupManager = mockk()
+    private val snapshotManager: SnapshotManager = mockk()
     private val packageService: PackageService = mockk()
     private val apkBackup: ApkBackup = mockk()
     private val iconManager: IconManager = mockk()
-    private val storagePluginManager: StoragePluginManager = mockk()
-    private val plugin: StoragePlugin<*> = mockk()
+    private val backendManager: BackendManager = mockk()
     private val nm: BackupNotificationManager = mockk()
 
     private val apkBackupManager = ApkBackupManager(
         context = context,
+        appBackupManager = appBackupManager,
+        backendManager = backendManager,
         settingsManager = settingsManager,
+        snapshotManager = snapshotManager,
         metadataManager = metadataManager,
         packageService = packageService,
-        apkBackup = apkBackup,
         iconManager = iconManager,
-        pluginManager = storagePluginManager,
+        apkBackup = apkBackup,
         nm = nm,
     )
 
-    private val metadataOutputStream = mockk<OutputStream>()
     private val packageMetadata: PackageMetadata = mockk()
+    private val snapshotCreator: SnapshotCreator = mockk()
 
     init {
-        every { storagePluginManager.appPlugin } returns plugin
+        every { appBackupManager.snapshotCreator } returns snapshotCreator
     }
 
     @Test
@@ -67,6 +68,9 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns true
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { snapshotCreator.onNoDataInCurrentRun(snapshot, packageName, true) } just Runs
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
@@ -77,14 +81,12 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { metadataManager.onPackageDoesNotGetBackedUp(packageInfo, NOT_ALLOWED) } just Runs
 
         every { settingsManager.backupApks() } returns false
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
 
         verify {
             metadataManager.onPackageDoesNotGetBackedUp(packageInfo, NOT_ALLOWED)
-            metadataOutputStream.close()
         }
     }
 
@@ -93,6 +95,9 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns true
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { snapshotCreator.onNoDataInCurrentRun(snapshot, packageName, true) } just Runs
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
@@ -102,14 +107,12 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { metadataManager.onPackageDoesNotGetBackedUp(packageInfo, NOT_ALLOWED) } just Runs
 
         every { settingsManager.backupApks() } returns false
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
 
         verify {
             metadataManager.onPackageDoesNotGetBackedUp(packageInfo, NOT_ALLOWED)
-            metadataOutputStream.close()
         }
     }
 
@@ -125,6 +128,9 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns true
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { snapshotCreator.onNoDataInCurrentRun(snapshot, packageName, true) } just Runs
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
@@ -135,14 +141,12 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { metadataManager.onPackageDoesNotGetBackedUp(packageInfo, WAS_STOPPED) } just Runs
 
         every { settingsManager.backupApks() } returns false
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
 
         verify {
             metadataManager.onPackageDoesNotGetBackedUp(packageInfo, WAS_STOPPED)
-            metadataOutputStream.close()
         }
     }
 
@@ -151,6 +155,9 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns true
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { snapshotCreator.onNoDataInCurrentRun(snapshot, packageName, true) } just Runs
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
@@ -160,7 +167,6 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { packageMetadata.state } returns NOT_ALLOWED
 
         every { settingsManager.backupApks() } returns false
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
@@ -175,11 +181,11 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns false
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
         every { settingsManager.backupApks() } returns false
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
@@ -210,34 +216,59 @@ internal class ApkBackupManagerTest : TransportTest() {
         every {
             nm.onApkBackup(notAllowedPackages[0].packageName, any(), 0, notAllowedPackages.size)
         } just Runs
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { backendManager.canDoBackupNow() } returns true
         // no backup needed
-        coEvery {
-            apkBackup.backupApkIfNecessary(notAllowedPackages[0], any())
-        } returns null
+        coEvery { apkBackup.backupApkIfNecessary(notAllowedPackages[0], snapshot) } just Runs
         // update notification for second package
         every {
             nm.onApkBackup(notAllowedPackages[1].packageName, any(), 1, notAllowedPackages.size)
         } just Runs
         // was backed up, get new packageMetadata
-        coEvery {
-            apkBackup.backupApkIfNecessary(notAllowedPackages[1], any())
-        } returns packageMetadata
-        every { metadataManager.onApkBackedUp(notAllowedPackages[1], packageMetadata) } just Runs
+        coEvery { apkBackup.backupApkIfNecessary(notAllowedPackages[1], snapshot) } just Runs
 
-        expectFinalUpload()
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
 
         coVerify {
-            apkBackup.backupApkIfNecessary(notAllowedPackages[0], any())
-            apkBackup.backupApkIfNecessary(notAllowedPackages[1], any())
-            metadataOutputStream.close()
+            apkBackup.backupApkIfNecessary(notAllowedPackages[0], snapshot)
+            apkBackup.backupApkIfNecessary(notAllowedPackages[1], snapshot)
         }
-        // metadata should only get uploaded once
-        verify(exactly = 1) {
-            metadataManager.uploadMetadata(metadataOutputStream)
-        }
+    }
+
+    @Test
+    fun `backup gets aborted when we can't do backup right now`() = runBlocking {
+        val packages = listOf(
+            PackageInfo().apply { packageName = "org.example.1" },
+        )
+
+        expectUploadIcons()
+        expectAllAppsWillGetBackedUp()
+        every { settingsManager.backupApks() } returns true
+        every { packageService.allUserPackages } returns packages
+        every { backendManager.canDoBackupNow() } returns false
+        every { nm.onApkBackupDone() } just Runs
+
+        assertThrows<IllegalStateException> { apkBackupManager.backup() }
+        Unit
+    }
+
+    @Test
+    fun `backup gets aborted at first app when we can't do backup right now`() = runBlocking {
+        val packages = listOf(
+            PackageInfo().apply { packageName = "org.example.1" },
+        )
+
+        expectUploadIcons()
+        expectAllAppsWillGetBackedUp()
+        every { settingsManager.backupApks() } returns true
+        every { packageService.allUserPackages } returns packages
+        every { backendManager.canDoBackupNow() } returns true andThen false
+        every { nm.onApkBackupDone() } just Runs
+
+        assertThrows<IllegalStateException> { apkBackupManager.backup() }
+        Unit
     }
 
     @Test
@@ -245,6 +276,9 @@ internal class ApkBackupManagerTest : TransportTest() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns listOf(packageInfo)
         every { settingsManager.isBackupEnabled(packageInfo.packageName) } returns true
+        every { snapshotManager.latestSnapshot } returns snapshot
+        every { snapshotCreator.onNoDataInCurrentRun(snapshot, packageName, true) } just Runs
+        every { backendManager.canDoBackupNow() } returns true
 
         expectUploadIcons()
 
@@ -256,41 +290,22 @@ internal class ApkBackupManagerTest : TransportTest() {
 
         every { settingsManager.backupApks() } returns false
 
-        // final upload
-        every { settingsManager.getToken() } returns token
-        coEvery { plugin.getOutputStream(token, FILE_BACKUP_METADATA) } returns metadataOutputStream
-        every {
-            metadataManager.uploadMetadata(metadataOutputStream)
-        } throws IOException() andThenThrows SecurityException() andThenJust Runs
-        every { metadataOutputStream.close() } just Runs
-
         every { nm.onApkBackupDone() } just Runs
 
         apkBackupManager.backup()
 
         verify {
             metadataManager.onPackageDoesNotGetBackedUp(packageInfo, NOT_ALLOWED)
-            metadataOutputStream.close()
         }
     }
 
     private suspend fun expectUploadIcons() {
-        every { settingsManager.getToken() } returns token
-        val stream = ByteArrayOutputStream()
-        coEvery { plugin.getOutputStream(token, FILE_BACKUP_ICONS) } returns stream
-        every { iconManager.uploadIcons(token, stream) } just Runs
+        coEvery { iconManager.uploadIcons() } just Runs
     }
 
     private fun expectAllAppsWillGetBackedUp() {
         every { nm.onAppsNotBackedUp() } just Runs
         every { packageService.notBackedUpPackages } returns emptyList()
-    }
-
-    private fun expectFinalUpload() {
-        every { settingsManager.getToken() } returns token
-        coEvery { plugin.getOutputStream(token, FILE_BACKUP_METADATA) } returns metadataOutputStream
-        every { metadataManager.uploadMetadata(metadataOutputStream) } just Runs
-        every { metadataOutputStream.close() } just Runs
     }
 
 }

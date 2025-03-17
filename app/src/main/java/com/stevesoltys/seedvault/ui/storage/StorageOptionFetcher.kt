@@ -18,8 +18,8 @@ import android.provider.DocumentsContract.PROVIDER_INTERFACE
 import android.provider.DocumentsContract.buildRootsUri
 import android.util.Log
 import com.stevesoltys.seedvault.R
-import com.stevesoltys.seedvault.plugins.saf.SafStorageOptions
-import com.stevesoltys.seedvault.plugins.saf.StorageRootResolver
+import com.stevesoltys.seedvault.backend.saf.SafStorageOptions
+import com.stevesoltys.seedvault.backend.saf.StorageRootResolver
 import com.stevesoltys.seedvault.ui.storage.StorageOption.SafOption
 
 private val TAG = StorageOptionFetcher::class.java.simpleName
@@ -41,8 +41,11 @@ internal class StorageOptionFetcher(private val context: Context, private val is
 
     private val packageManager = context.packageManager
     private val contentResolver = context.contentResolver
-    private val whitelistedAuthorities =
-        context.resources.getStringArray(R.array.storage_authority_whitelist)
+    private val whitelistedAuthorities = if (isRestore) {
+        context.resources.getStringArray(R.array.storage_authority_restore_allow_list)
+    } else {
+        context.resources.getStringArray(R.array.storage_authority_backup_allow_list)
+    }
     private val safStorageOptions = SafStorageOptions(context, isRestore, whitelistedAuthorities)
 
     private var listener: RemovableStorageListener? = null

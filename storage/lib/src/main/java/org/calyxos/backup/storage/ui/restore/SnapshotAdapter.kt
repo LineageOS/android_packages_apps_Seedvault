@@ -10,6 +10,8 @@ import android.text.format.DateUtils.getRelativeTimeSpanString
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
@@ -47,22 +49,32 @@ internal class SnapshotAdapter(private val listener: SnapshotClickListener) :
     inner class SnapshotViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val layout: ViewGroup = view.findViewById(R.id.layout)
         private val nameView: TextView = view.findViewById(R.id.nameView)
+        private val infoView: TextView = view.findViewById(R.id.infoView)
+        private val errorView: TextView = view.findViewById(R.id.errorView)
         private val timeView: TextView = view.findViewById(R.id.timeView)
-        private val sizeView: TextView = view.findViewById(R.id.sizeView)
 
         fun bind(item: SnapshotItem) {
-            if (item.snapshot == null) {
+            val s = item.snapshot
+            if (s == null) {
                 // TODO also remove clickable background
                 layout.setOnClickListener(null)
             } else {
                 layout.setOnClickListener { listener.onSnapshotClicked(item) }
             }
-            nameView.text = item.snapshot?.name
+            nameView.text = s?.name
+            val nFiles = (s?.mediaFilesCount ?: 0) + (s?.documentFilesCount ?: 0)
+            val infoStr = infoView.context.getString(R.string.select_files_number_of_files, nFiles)
+            val sizeStr = s?.size?.let { size ->
+                Formatter.formatShortFileSize(infoView.context, size)
+            }
+            infoView.text = if (sizeStr == null) infoStr else "$infoStr ($sizeStr)"
+            if (item.hasError) {
+                errorView.visibility = VISIBLE
+            } else {
+                errorView.visibility = GONE
+            }
             val now = System.currentTimeMillis()
             timeView.text = getRelativeTimeSpanString(item.time, now, 0L, FORMAT_ABBREV_ALL)
-            sizeView.text = item.snapshot?.size?.let { size ->
-                Formatter.formatShortFileSize(sizeView.context, size)
-            }
         }
     }
 

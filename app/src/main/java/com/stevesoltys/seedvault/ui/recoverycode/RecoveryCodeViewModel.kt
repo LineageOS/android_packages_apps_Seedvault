@@ -16,15 +16,18 @@ import cash.z.ecc.android.bip39.toSeed
 import com.stevesoltys.seedvault.App
 import com.stevesoltys.seedvault.crypto.Crypto
 import com.stevesoltys.seedvault.crypto.KeyManager
+import com.stevesoltys.seedvault.repo.AppBackupManager
 import com.stevesoltys.seedvault.transport.backup.BackupInitializer
 import com.stevesoltys.seedvault.ui.LiveEvent
 import com.stevesoltys.seedvault.ui.MutableLiveEvent
 import com.stevesoltys.seedvault.ui.notification.BackupNotificationManager
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.calyxos.backup.storage.api.StorageBackup
 import java.io.IOException
+import kotlin.system.exitProcess
 
 internal const val WORD_NUM = 12
 
@@ -35,6 +38,7 @@ internal class RecoveryCodeViewModel(
     private val crypto: Crypto,
     private val keyManager: KeyManager,
     private val backupManager: IBackupManager,
+    private val appBackupManager: AppBackupManager,
     private val backupInitializer: BackupInitializer,
     private val notificationManager: BackupNotificationManager,
     private val storageBackup: StorageBackup,
@@ -61,7 +65,9 @@ internal class RecoveryCodeViewModel(
 
     @Throws(InvalidWordException::class, ChecksumException::class)
     fun validateCode(input: List<CharSequence>): Mnemonics.MnemonicCode {
-        val code = Mnemonics.MnemonicCode(input.toMnemonicChars())
+        check(input.size == WORD_NUM) { "Got ${input.size} words instead of $WORD_NUM" }
+        val trimmedInput = input.map { it.trim() } // white-spaces have a meaning in next line
+        val code = Mnemonics.MnemonicCode(trimmedInput.toMnemonicChars())
         try {
             code.validate()
         } catch (e: WordCountException) {
@@ -102,20 +108,33 @@ internal class RecoveryCodeViewModel(
      * The reason is that old backups won't be readable anymore with the new key.
      * We can't delete other backups safely, because we can't be sure
      * that they don't belong to a different device or user.
+     *
+     * Our process will be terminated at the end to ensure the old key isn't used anymore.
      */
+    @OptIn(DelicateCoroutinesApi::class)
     fun reinitializeBackupLocation() {
         Log.d(TAG, "Re-initializing backup location...")
-        // TODO this code is almost identical to BackupStorageViewModel#onLocationSet(), unify?
         GlobalScope.launch(Dispatchers.IO) {
+            // remove old backup repository and clear local blob cache
+            try {
+                appBackupManager.removeBackupRepo()
+            } catch (e: IOException) {
+                Log.e(TAG, "Error removing backup repo: ", e)
+            }
             // remove old storage snapshots and clear cache
             storageBackup.init()
+            // we'll need to kill our process to not have references to the old key around
+            // trying to re-set all those references is complicated, so exiting the app is easier.
+            val exitApp = {
+                Log.w(TAG, "Shutting down app...")
+                exitProcess(0)
+            }
             try {
                 // initialize the new location
-                if (backupManager.isBackupEnabled) backupInitializer.initialize({ }) {
-                    // no-op
-                }
+                if (backupManager.isBackupEnabled) backupInitializer.initialize(exitApp, exitApp)
             } catch (e: IOException) {
                 Log.e(TAG, "Error starting new RestoreSet", e)
+                exitApp()
             }
         }
     }

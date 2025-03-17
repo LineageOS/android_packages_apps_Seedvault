@@ -5,24 +5,27 @@
 
 package org.calyxos.backup.storage.api
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract.isTreeUri
 import android.provider.MediaStore
+import android.provider.Settings
+import android.provider.Settings.Secure.ANDROID_ID
 import android.util.Log
 import androidx.annotation.WorkerThread
-import androidx.room.Room
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import org.calyxos.backup.storage.SnapshotRetriever
 import org.calyxos.backup.storage.backup.Backup
 import org.calyxos.backup.storage.backup.BackupSnapshot
 import org.calyxos.backup.storage.backup.ChunksCacheRepopulater
+import org.calyxos.backup.storage.check.Checker
 import org.calyxos.backup.storage.db.Db
-import org.calyxos.backup.storage.getDocumentPath
+import org.calyxos.backup.storage.getCurrentBackupSnapshots
 import org.calyxos.backup.storage.getMediaType
-import org.calyxos.backup.storage.plugin.SnapshotRetriever
 import org.calyxos.backup.storage.prune.Pruner
 import org.calyxos.backup.storage.prune.RetentionManager
 import org.calyxos.backup.storage.restore.FileRestore
@@ -31,6 +34,11 @@ import org.calyxos.backup.storage.scanner.DocumentScanner
 import org.calyxos.backup.storage.scanner.FileScanner
 import org.calyxos.backup.storage.scanner.MediaScanner
 import org.calyxos.backup.storage.toStoredUri
+import org.calyxos.seedvault.core.backends.Backend
+import org.calyxos.seedvault.core.backends.FileBackupFileType
+import org.calyxos.seedvault.core.backends.IBackendManager
+import org.calyxos.seedvault.core.backends.saf.getDocumentPath
+import org.calyxos.seedvault.core.crypto.KeyManager
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -38,32 +46,66 @@ private const val TAG = "StorageBackup"
 
 public class StorageBackup(
     private val context: Context,
-    private val pluginGetter: () -> StoragePlugin,
+    private val backendManager: IBackendManager,
+    private val keyManager: KeyManager,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
     private val db: Db by lazy {
-        Room.databaseBuilder(context, Db::class.java, "seedvault-storage-local-cache")
-            .build()
+        Db.build(context)
     }
     private val uriStore by lazy { db.getUriStore() }
+    private val backend get() = backendManager.backend
+
+    @SuppressLint("HardwareIds")
+    private val androidId = Settings.Secure.getString(context.contentResolver, ANDROID_ID)
 
     private val mediaScanner by lazy { MediaScanner(context) }
-    private val snapshotRetriever = SnapshotRetriever(pluginGetter)
-    private val chunksCacheRepopulater = ChunksCacheRepopulater(db, pluginGetter, snapshotRetriever)
+    private val snapshotRetriever = SnapshotRetriever(backendManager)
+    private val chunksCacheRepopulater = ChunksCacheRepopulater(
+        chunksCache = db.getChunksCache(),
+        backendManager = backendManager,
+        androidId = androidId,
+        snapshotRetriever = snapshotRetriever,
+    )
     private val backup by lazy {
         val documentScanner = DocumentScanner(context)
         val fileScanner = FileScanner(uriStore, mediaScanner, documentScanner)
-        Backup(context, db, fileScanner, pluginGetter, chunksCacheRepopulater)
+        Backup(
+            context = context,
+            db = db,
+            fileScanner = fileScanner,
+            backendManager = backendManager,
+            androidId = androidId,
+            keyManager = keyManager,
+            cacheRepopulater = chunksCacheRepopulater
+        )
     }
     private val restore by lazy {
-        Restore(context, pluginGetter, snapshotRetriever, FileRestore(context, mediaScanner))
+        val fileRestore = FileRestore(context, mediaScanner)
+        Restore(context, backendManager, keyManager, snapshotRetriever, fileRestore)
     }
     private val retention = RetentionManager(context)
-    private val pruner by lazy { Pruner(db, retention, pluginGetter, snapshotRetriever) }
+    private val pruner by lazy {
+        Pruner(db, retention, backendManager, androidId, keyManager, snapshotRetriever)
+    }
+    private val checker by lazy {
+        Checker(
+            db = db,
+            backendManager = backendManager,
+            snapshotRetriever = snapshotRetriever,
+            keyManager = keyManager,
+            cacheRepopulater = chunksCacheRepopulater,
+            androidId = androidId,
+        )
+    }
 
     private val backupRunning = AtomicBoolean(false)
     private val restoreRunning = AtomicBoolean(false)
+    private val checkRunning = AtomicBoolean(false)
+
+    public var checkResult: CheckResult? = null
+        private set
 
     public val uris: Set<Uri>
         @WorkerThread
@@ -108,7 +150,6 @@ public class StorageBackup(
      * (see [deleteAllSnapshots]) as well as clears local cache (see [clearCache]).
      */
     public suspend fun init() {
-        pluginGetter().init()
         deleteAllSnapshots()
         clearCache()
     }
@@ -118,13 +159,16 @@ public class StorageBackup(
      * (potentially encrypted with an old key) laying around.
      * Using a storage location with existing data is not supported.
      * Using the same root folder for storage on different devices or user profiles is fine though
-     * as the [StoragePlugin] should isolate storage per [StoredSnapshot.userId].
+     * as the [Backend] should isolate storage per [StoredSnapshot.userId].
      */
-    public suspend fun deleteAllSnapshots(): Unit = withContext(dispatcher) {
+    private suspend fun deleteAllSnapshots(): Unit = withContext(dispatcher) {
         try {
-            pluginGetter().getCurrentBackupSnapshots().forEach {
+            backend.getCurrentBackupSnapshots(androidId).forEach {
+                val handle = FileBackupFileType.Snapshot(androidId, it.timestamp)
                 try {
-                    pluginGetter().deleteBackupSnapshot(it)
+                    // TODO could we not only delete snapshots that we cannot decrypt here?
+                    //  ChunksCacheRepopulater should be able to restore refCounts
+                    backend.remove(handle)
                 } catch (e: IOException) {
                     Log.e(TAG, "Error deleting snapshot $it", e)
                 }
@@ -144,8 +188,8 @@ public class StorageBackup(
 
     public suspend fun runBackup(backupObserver: BackupObserver?): Boolean =
         withContext(dispatcher) {
-            if (backupRunning.getAndSet(true)) {
-                Log.w(TAG, "Backup already running, not starting a new one")
+            if (checkRunning.get() || !backupRunning.compareAndSet(false, true)) {
+                Log.w(TAG, "Backup or check already running, not starting a new one")
                 return@withContext false
             }
             try {
@@ -203,7 +247,7 @@ public class StorageBackup(
         snapshot: BackupSnapshot,
         restoreObserver: RestoreObserver? = null,
     ): Boolean = withContext(dispatcher) {
-        if (restoreRunning.getAndSet(true)) {
+        if (!restoreRunning.compareAndSet(false, true)) {
             Log.w(TAG, "Restore already running, not starting a new one")
             return@withContext false
         }
@@ -216,6 +260,33 @@ public class StorageBackup(
         } finally {
             restoreRunning.set(false)
         }
+    }
+
+    public fun getBackupSize(): Long {
+        return checker.getBackupSize()
+    }
+
+    public suspend fun checkBackups(percent: Int, checkObserver: CheckObserver?): Boolean {
+        check(percent in 0..100) { "Invalid percentage: $percent" }
+        if (checkRunning.get() || backupRunning.get()) {
+            Log.w(TAG, "Check or backup already running, not starting a new one")
+            return false
+        }
+        checkResult = withContext(dispatcher) {
+            checkRunning.set(true)
+            try {
+                checkObserver?.onStartChecking()
+                checker.check(percent, checkObserver)
+            } finally {
+                checkRunning.set(false)
+            }
+        }
+        return true
+    }
+
+    public fun clearCheckResult() {
+        Log.i(TAG, "Clearing check result...")
+        checkResult = null
     }
 
 }

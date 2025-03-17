@@ -1,3 +1,37 @@
+## [14-5.3] - 2025-02-14
+* Added support for user CA certificates
+* Fixed issue where many Go server implementations of WebDAV did not work with the WebDAV client in Seedvault
+* Bumped the app data quota from 1GB to 3GB
+* Nextcloud app is no longer allowed for backup (Use built-in WebDAV Cloud support!)
+* Improved handling of metered networks, if disallowed, the backup process will be aborted
+* Fixed backup errors with USB when file and app backup are both on
+* Fixed overdue backups not automatically starting when USB drives are plugged in
+* The size of each app backup is now shown on the restore screen
+* Fixed a common error (StaleDataException) causing backups to fail
+* Fixed error message when no backups are available to restore
+* Implemented a wrapper for the backend with a retrying mechanism, giving us less common errors
+
+## [14-5.2] - 2024-12-27
+* It is now possible to verify the integrity of file backups as well, partially or fully
+* Improve files backup snapshot UI
+* Allow changing backup location when USB drive isn't plugged in
+* Fix work profile USB backup
+
+## [14-5.1] - 2024-12-10
+* First Android 15 release
+* New backup format using compression and deduplication
+* Can still restore old backups, but old Seedvault can't restore backups from this version
+* Faster and more reliable backups making snapshots that can individually be restored
+* Auto-cleaning of old backups
+* All backups now mimic device-to-device (allowing backup for all apps)
+* All backups now use a high per-app app quota
+* App backup (for APKs) moved to expert settings
+* Show more information for backups available to restore
+* Fix "Waiting to back up..." showing for apps
+* It is now possible to verify the integrity of app backups, partially or fully
+* The entire WebDAV URL is now shown when in settings
+* A launch button is now shown for apps that are force-stopped so that they can be backed up
+
 ## [14-4.1] - 2024-08-23
 * It is now possible to restore after setting up a profile
 * It is now possible to select what to restore (e.g. apps, files...)

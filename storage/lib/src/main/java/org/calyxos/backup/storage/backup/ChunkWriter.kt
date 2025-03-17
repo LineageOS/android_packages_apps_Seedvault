@@ -6,10 +6,15 @@
 package org.calyxos.backup.storage.backup
 
 import android.util.Log
-import org.calyxos.backup.storage.api.StoragePlugin
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import okio.Buffer
 import org.calyxos.backup.storage.backup.Backup.Companion.VERSION
 import org.calyxos.backup.storage.crypto.StreamCrypto
 import org.calyxos.backup.storage.db.ChunksCache
+import org.calyxos.seedvault.core.backends.BackendSaver
+import org.calyxos.seedvault.core.backends.FileBackupFileType
+import org.calyxos.seedvault.core.backends.IBackendManager
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -30,35 +35,42 @@ internal class ChunkWriter(
     private val streamCrypto: StreamCrypto,
     private val streamKey: ByteArray,
     private val chunksCache: ChunksCache,
-    private val storagePlugin: StoragePlugin,
+    private val backendManager: IBackendManager,
+    private val androidId: String,
     private val bufferSize: Int = DEFAULT_BUFFER_SIZE,
 ) {
 
-    private val buffer = ByteArray(bufferSize)
+    private val backend get() = backendManager.backend
+    private val semaphore = Semaphore(1)
+    private val byteBuffer = ByteArray(bufferSize)
+    private val buffer = Buffer()
 
     @Throws(IOException::class, GeneralSecurityException::class)
     suspend fun writeChunk(
         inputStream: InputStream,
         chunks: List<Chunk>,
         missingChunkIds: List<String>,
+        wasAborted: () -> Boolean,
     ): ChunkWriterResult {
         var writtenChunks = 0
         var writtenBytes = 0L
         chunks.forEach { chunk ->
+            if (wasAborted()) throw IOException("Metered Network")
             val cachedChunk = chunksCache.get(chunk.id)
+            // TODO missing chunks used by several files will get uploaded several times
             val isMissing = chunk.id in missingChunkIds
             val notCached = cachedChunk == null
             if (isMissing) Log.w(TAG, "Chunk ${chunk.id} is missing (cached: ${!notCached})")
             if (notCached || isMissing) { // chunk not in storage
-                writeChunkData(chunk.id) { encryptingStream ->
+                val size = writeChunkData(chunk.id) { encryptingStream ->
                     copyChunkFromInputStream(inputStream, chunk, encryptingStream)
                 }
-                if (notCached) chunksCache.insert(chunk.toCachedChunk())
+                if (notCached) chunksCache.insert(chunk.toCachedChunk(size))
                 writtenChunks++
-                writtenBytes += chunk.size
+                writtenBytes += size
             } else { // chunk already uploaded
-                val skipped = inputStream.skip(chunk.size)
-                check(chunk.size == skipped) { "skipping error" }
+                val skipped = inputStream.skip(chunk.plaintextSize)
+                check(chunk.plaintextSize == skipped) { "skipping error" }
             }
         }
         val endByte = inputStream.read()
@@ -67,12 +79,26 @@ internal class ChunkWriter(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    private suspend fun writeChunkData(chunkId: String, writer: (OutputStream) -> Unit) {
-        storagePlugin.getChunkOutputStream(chunkId).use { chunkStream ->
-            chunkStream.write(VERSION.toInt())
+    private suspend fun writeChunkData(chunkId: String, writer: (OutputStream) -> Unit): Long {
+        val handle = FileBackupFileType.Blob(androidId, chunkId)
+        semaphore.withPermit { // only allow one writer using the buffer at a time
+            buffer.clear()
+            buffer.writeByte(VERSION.toInt())
             val ad = streamCrypto.getAssociatedDataForChunk(chunkId)
-            streamCrypto.newEncryptingStream(streamKey, chunkStream, ad).use { encryptingStream ->
-                writer(encryptingStream)
+            streamCrypto.newEncryptingStream(streamKey, buffer.outputStream(), ad).use { stream ->
+                writer(stream)
+            }
+            val saver = object : BackendSaver {
+                override val size: Long = buffer.size
+                override val sha256: String = buffer.sha256().hex()
+                override fun save(outputStream: OutputStream): Long {
+                    return buffer.copyTo(outputStream).size
+                }
+            }
+            return try {
+                backend.save(handle, saver)
+            } finally {
+                buffer.clear()
             }
         }
     }
@@ -85,14 +111,14 @@ internal class ChunkWriter(
     ) {
         var totalBytesRead = 0L
         do {
-            val sizeLeft = (chunk.size - totalBytesRead).toInt()
-            val bytesRead = inputStream.read(buffer, 0, min(bufferSize, sizeLeft))
+            val sizeLeft = (chunk.plaintextSize - totalBytesRead).toInt()
+            val bytesRead = inputStream.read(byteBuffer, 0, min(bufferSize, sizeLeft))
             if (bytesRead == -1) throw IOException("unexpected end of stream for ${chunk.id}")
-            outputStream.write(buffer, 0, bytesRead)
+            outputStream.write(byteBuffer, 0, bytesRead)
             totalBytesRead += bytesRead
-        } while (bytesRead >= 0 && totalBytesRead < chunk.size)
-        check(totalBytesRead == chunk.size) {
-            "copyChunkFromInputStream: $totalBytesRead != ${chunk.size}"
+        } while (bytesRead >= 0 && totalBytesRead < chunk.plaintextSize)
+        check(totalBytesRead == chunk.plaintextSize) {
+            "copyChunkFromInputStream: $totalBytesRead != ${chunk.plaintextSize}"
         }
     }
 
@@ -112,10 +138,10 @@ internal class ChunkWriter(
         if (isMissing) Log.w(TAG, "Chunk ${chunk.id} is missing (cached: ${cachedChunk != null})")
         if (cachedChunk != null && !isMissing) return false
         // chunk not yet uploaded
-        writeChunkData(chunk.id) { encryptingStream ->
+        val size = writeChunkData(chunk.id) { encryptingStream ->
             zip.writeTo(encryptingStream)
         }
-        if (cachedChunk == null) chunksCache.insert(chunk.toCachedChunk())
+        if (cachedChunk == null) chunksCache.insert(chunk.toCachedChunk(size))
         return true
     }
 

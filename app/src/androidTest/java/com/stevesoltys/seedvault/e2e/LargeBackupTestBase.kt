@@ -9,7 +9,6 @@ import android.content.pm.PackageInfo
 import android.os.ParcelFileDescriptor
 import androidx.test.uiautomator.Until
 import com.stevesoltys.seedvault.e2e.io.BackupDataInputIntercept
-import com.stevesoltys.seedvault.e2e.io.InputStreamIntercept
 import com.stevesoltys.seedvault.e2e.screen.impl.BackupScreen
 import com.stevesoltys.seedvault.transport.backup.FullBackup
 import com.stevesoltys.seedvault.transport.backup.InputFactory
@@ -21,9 +20,12 @@ import io.mockk.every
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.calyxos.seedvault.core.toHexString
 import org.koin.core.component.get
-import java.io.ByteArrayOutputStream
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.test.fail
 
 internal interface LargeBackupTestBase : LargeTestBase {
 
@@ -74,7 +76,6 @@ internal interface LargeBackupTestBase : LargeTestBase {
             full = mutableMapOf(),
             kv = mutableMapOf(),
             userApps = packageService.userApps,
-            userNotAllowedApps = packageService.userNotAllowedApps
         )
 
         val completed = spyOnBackup(backupResult)
@@ -111,7 +112,7 @@ internal interface LargeBackupTestBase : LargeTestBase {
         var data = mutableMapOf<String, ByteArray>()
 
         coEvery {
-            spyKVBackup.performBackup(any(), any(), any(), any(), any())
+            spyKVBackup.performBackup(any(), any(), any())
         } answers {
             packageName = firstArg<PackageInfo>().packageName
             callOriginal()
@@ -154,10 +155,11 @@ internal interface LargeBackupTestBase : LargeTestBase {
 
     private fun spyOnFullBackupData(backupResult: SeedvaultLargeTestResult) {
         var packageName: String? = null
-        var dataIntercept = ByteArrayOutputStream()
+        val messageDigest = MessageDigest.getInstance("SHA-256")
+        var digestInputStream: DigestInputStream? = null
 
         coEvery {
-            spyFullBackup.performFullBackup(any(), any(), any(), any(), any())
+            spyFullBackup.performFullBackup(any(), any(), any())
         } answers {
             packageName = firstArg<PackageInfo>().packageName
             callOriginal()
@@ -166,20 +168,19 @@ internal interface LargeBackupTestBase : LargeTestBase {
         every {
             spyInputFactory.getInputStream(any())
         } answers {
-            InputStreamIntercept(
-                inputStream = callOriginal(),
-                intercept = dataIntercept
-            )
+            digestInputStream = DigestInputStream(callOriginal(), messageDigest)
+            digestInputStream!!
         }
 
-        every {
+        coEvery {
             spyFullBackup.finishBackup()
         } answers {
             val result = callOriginal()
-            backupResult.full[packageName!!] = dataIntercept.toByteArray().sha256()
+            val digest = digestInputStream?.messageDigest ?: fail("No digestInputStream")
+            backupResult.full[packageName!!] = digest.digest().toHexString()
 
             packageName = null
-            dataIntercept = ByteArrayOutputStream()
+            digest.reset()
             result
         }
     }
@@ -190,13 +191,17 @@ internal interface LargeBackupTestBase : LargeTestBase {
         clearMocks(spyBackupNotificationManager)
 
         every {
-            spyBackupNotificationManager.onBackupFinished(any(), any(), any(), any())
+            spyBackupNotificationManager.onBackupSuccess(any(), any(), any())
         } answers {
-            val success = firstArg<Boolean>()
-            assert(success) { "Backup failed." }
-
             callOriginal()
             completed.set(true)
+        }
+        every {
+            spyBackupNotificationManager.onBackupError()
+        } answers {
+            callOriginal()
+            completed.set(true)
+            fail("Backup failed.")
         }
 
         return completed

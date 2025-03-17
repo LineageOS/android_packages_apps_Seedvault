@@ -7,7 +7,7 @@ package org.calyxos.backup.storage.backup
 
 import org.calyxos.backup.storage.content.ContentFile
 import org.calyxos.backup.storage.db.CachedChunk
-import org.calyxos.backup.storage.toHexString
+import org.calyxos.seedvault.core.toHexString
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -25,7 +25,7 @@ internal data class ZipChunk(
     val size: Long,
     var wasUploaded: Boolean = false,
 ) {
-    fun toCachedChunk() = CachedChunk(id, 0, size)
+    fun toCachedChunk(size: Long) = CachedChunk(id, 0, size)
 }
 
 @Suppress("BlockingMethodInNonBlockingContext")

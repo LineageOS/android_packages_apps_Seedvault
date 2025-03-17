@@ -5,6 +5,7 @@
 
 package com.stevesoltys.seedvault.settings
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
@@ -17,6 +18,8 @@ import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.ImageView.ScaleType
 import android.widget.TextView
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
 import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.DiffUtil.DiffResult
@@ -24,7 +27,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.Adapter
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import com.stevesoltys.seedvault.R
-import com.stevesoltys.seedvault.ui.AppBackupState.FAILED_NOT_ALLOWED
+import com.stevesoltys.seedvault.ui.AppBackupState.FAILED_WAS_STOPPED
 import com.stevesoltys.seedvault.ui.AppBackupState.SUCCEEDED
 import com.stevesoltys.seedvault.ui.AppViewHolder
 import com.stevesoltys.seedvault.ui.toRelativeTime
@@ -105,6 +108,7 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                 progressBar.visibility = INVISIBLE
                 checkBox.visibility = VISIBLE
                 checkBox.isChecked = item.enabled
+                button.visibility = GONE
             } else {
                 v.setOnClickListener(null)
                 v.setOnLongClickListener {
@@ -114,13 +118,8 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                     startActivity(context, intent, null)
                     true
                 }
-                if (item.status == FAILED_NOT_ALLOWED) {
-                    appStatus.visibility = INVISIBLE
-                    progressBar.visibility = INVISIBLE
-                    appInfo.visibility = GONE
-                } else {
-                    setState(item.status, false)
-                }
+                setState(item.status, false)
+                button.visibility = GONE
                 if (item.status == SUCCEEDED) {
                     appInfo.text = if (item.size == null) {
                         item.time.toRelativeTime(context)
@@ -129,6 +128,28 @@ internal class AppStatusAdapter(private val toggleListener: AppStatusToggleListe
                             " (${formatShortFileSize(v.context, item.size)})"
                     }
                     appInfo.visibility = VISIBLE
+                } else if (item.status == FAILED_WAS_STOPPED && item.time > 0) {
+                    @SuppressLint("SetTextI18n")
+                    appInfo.text = if (item.size == null) {
+                        item.time.toRelativeTime(context).toString()
+                    } else {
+                        item.time.toRelativeTime(context).toString() +
+                            " (${formatShortFileSize(v.context, item.size)})"
+                    } + "\n${item.status.getBackupText(context)}"
+                    appInfo.visibility = VISIBLE
+                }
+                // setState() above sets appInfo state for other cases already
+                if (item.status == FAILED_WAS_STOPPED) {
+                    button.setOnClickListener {
+                        val packageManager = context.packageManager
+                        packageManager.getLaunchIntentForPackage(item.packageName)?.let { i ->
+                            context.startActivity(i)
+                        } ?: run {
+                            val s = R.string.backup_app_stopped_no_intent
+                            Toast.makeText(context, s, LENGTH_SHORT).show()
+                        }
+                    }
+                    button.visibility = VISIBLE
                 }
                 checkBox.visibility = INVISIBLE
             }

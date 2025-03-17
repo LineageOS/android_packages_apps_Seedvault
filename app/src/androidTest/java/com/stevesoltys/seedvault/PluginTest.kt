@@ -5,26 +5,21 @@
 
 package com.stevesoltys.seedvault
 
-import android.net.Uri
 import androidx.test.core.content.pm.PackageInfoBuilder
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import androidx.test.platform.app.InstrumentationRegistry
-import com.stevesoltys.seedvault.plugins.LegacyStoragePlugin
-import com.stevesoltys.seedvault.plugins.StoragePlugin
-import com.stevesoltys.seedvault.plugins.saf.DocumentsProviderLegacyPlugin
-import com.stevesoltys.seedvault.plugins.saf.DocumentsProviderStoragePlugin
-import com.stevesoltys.seedvault.plugins.saf.DocumentsStorage
-import com.stevesoltys.seedvault.plugins.saf.FILE_BACKUP_METADATA
-import com.stevesoltys.seedvault.plugins.saf.deleteContents
+import com.stevesoltys.seedvault.backend.LegacyStoragePlugin
+import com.stevesoltys.seedvault.backend.saf.DocumentsProviderLegacyPlugin
+import com.stevesoltys.seedvault.backend.saf.DocumentsStorage
 import com.stevesoltys.seedvault.settings.SettingsManager
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import org.calyxos.seedvault.core.backends.BackendSaver
+import org.calyxos.seedvault.core.backends.LegacyAppBackupFile
+import org.calyxos.seedvault.core.backends.saf.SafBackend
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -32,6 +27,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.OutputStream
+
+private const val root = ".SeedvaultPluginTest"
 
 @RunWith(AndroidJUnit4::class)
 @MediumTest
@@ -39,14 +37,13 @@ class PluginTest : KoinComponent {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val settingsManager: SettingsManager by inject()
-    private val mockedSettingsManager: SettingsManager = mockk()
     private val storage = DocumentsStorage(
         appContext = context,
-        settingsManager = mockedSettingsManager,
-        safStorage = settingsManager.getSafStorage() ?: error("No SAF storage"),
+        safStorage = settingsManager.getSafProperties() ?: error("No SAF storage"),
+        root = root,
     )
 
-    private val storagePlugin: StoragePlugin<Uri> = DocumentsProviderStoragePlugin(context, storage)
+    private val backend = SafBackend(context, storage.safStorage, root)
 
     @Suppress("Deprecation")
     private val legacyStoragePlugin: LegacyStoragePlugin = DocumentsProviderLegacyPlugin(context) {
@@ -59,30 +56,27 @@ class PluginTest : KoinComponent {
 
     @Before
     fun setup() = runBlocking {
-        every { mockedSettingsManager.getSafStorage() } returns settingsManager.getSafStorage()
-        storage.rootBackupDir?.deleteContents(context)
-            ?: error("Select a storage location in the app first!")
+        backend.removeAll()
     }
 
     @After
     fun tearDown() = runBlocking {
-        storage.rootBackupDir?.deleteContents(context)
-        Unit
+        backend.removeAll()
     }
 
     @Test
     fun testProviderPackageName() {
-        assertNotNull(storagePlugin.providerPackageName)
+        assertNotNull(backend.providerPackageName)
     }
 
     @Test
     fun testTest() = runBlocking(Dispatchers.IO) {
-        assertTrue(storagePlugin.test())
+        assertTrue(backend.test())
     }
 
     @Test
     fun testGetFreeSpace() = runBlocking(Dispatchers.IO) {
-        val freeBytes = storagePlugin.getFreeSpace() ?: error("no free space retrieved")
+        val freeBytes = backend.getFreeSpace() ?: error("no free space retrieved")
         assertTrue(freeBytes > 0)
     }
 
@@ -96,80 +90,57 @@ class PluginTest : KoinComponent {
     @Test
     fun testInitializationAndRestoreSets() = runBlocking(Dispatchers.IO) {
         // no backups available initially
-        assertEquals(0, storagePlugin.getAvailableBackups()?.toList()?.size)
-
-        // prepare returned tokens requested when initializing device
-        every { mockedSettingsManager.getToken() } returnsMany listOf(token, token + 1, token + 1)
-
-        // start new restore set and initialize device afterwards
-        storagePlugin.startNewRestoreSet(token)
-        storagePlugin.initializeDevice()
+        assertEquals(0, backend.getAvailableBackupFileHandles().toList().size)
 
         // write metadata (needed for backup to be recognized)
-        storagePlugin.getOutputStream(token, FILE_BACKUP_METADATA)
-            .writeAndClose(getRandomByteArray())
+        backend.save(LegacyAppBackupFile.Metadata(token), getSaver(getRandomByteArray()))
 
         // one backup available now
-        assertEquals(1, storagePlugin.getAvailableBackups()?.toList()?.size)
+        assertEquals(1, backend.getAvailableBackupFileHandles().toList().size)
 
         // initializing again (with another restore set) does add a restore set
-        storagePlugin.startNewRestoreSet(token + 1)
-        storagePlugin.initializeDevice()
-        storagePlugin.getOutputStream(token + 1, FILE_BACKUP_METADATA)
-            .writeAndClose(getRandomByteArray())
-        assertEquals(2, storagePlugin.getAvailableBackups()?.toList()?.size)
+        backend.save(LegacyAppBackupFile.Metadata(token + 1), getSaver(getRandomByteArray()))
+        assertEquals(2, backend.getAvailableBackupFileHandles().toList().size)
 
         // initializing again (without new restore set) doesn't change number of restore sets
-        storagePlugin.initializeDevice()
-        storagePlugin.getOutputStream(token + 1, FILE_BACKUP_METADATA)
-            .writeAndClose(getRandomByteArray())
-        assertEquals(2, storagePlugin.getAvailableBackups()?.toList()?.size)
-
-        // ensure that the new backup dir exist
-        assertTrue(storage.currentSetDir!!.exists())
+        backend.save(LegacyAppBackupFile.Metadata(token + 1), getSaver(getRandomByteArray()))
+        assertEquals(2, backend.getAvailableBackupFileHandles().toList().size)
     }
 
     @Test
     fun testMetadataWriteRead() = runBlocking(Dispatchers.IO) {
-        every { mockedSettingsManager.getToken() } returns token
-
-        storagePlugin.startNewRestoreSet(token)
-        storagePlugin.initializeDevice()
-
         // write metadata
         val metadata = getRandomByteArray()
-        storagePlugin.getOutputStream(token, FILE_BACKUP_METADATA).writeAndClose(metadata)
+        backend.save(LegacyAppBackupFile.Metadata(token), getSaver(metadata))
 
         // get available backups, expect only one with our token and no error
-        var availableBackups = storagePlugin.getAvailableBackups()?.toList()
-        check(availableBackups != null)
+        var availableBackups = backend.getAvailableBackupFileHandles().toList()
         assertEquals(1, availableBackups.size)
-        assertEquals(token, availableBackups[0].token)
+        var backupHandle = availableBackups[0] as LegacyAppBackupFile.Metadata
+        assertEquals(token, backupHandle.token)
 
         // read metadata matches what was written earlier
-        assertReadEquals(metadata, availableBackups[0].inputStreamRetriever())
+        assertReadEquals(metadata, backend.load(backupHandle))
 
         // initializing again (without changing storage) keeps restore set with same token
-        storagePlugin.initializeDevice()
-        storagePlugin.getOutputStream(token, FILE_BACKUP_METADATA).writeAndClose(metadata)
-        availableBackups = storagePlugin.getAvailableBackups()?.toList()
-        check(availableBackups != null)
+        backend.save(LegacyAppBackupFile.Metadata(token), getSaver(metadata))
+        availableBackups = backend.getAvailableBackupFileHandles().toList()
         assertEquals(1, availableBackups.size)
-        assertEquals(token, availableBackups[0].token)
+        backupHandle = availableBackups[0] as LegacyAppBackupFile.Metadata
+        assertEquals(token, backupHandle.token)
 
         // metadata hasn't changed
-        assertReadEquals(metadata, availableBackups[0].inputStreamRetriever())
+        assertReadEquals(metadata, backend.load(backupHandle))
     }
 
     @Test
-    @Suppress("Deprecation")
     fun v0testApkWriteRead() = runBlocking {
-        // initialize storage with given token
-        initStorage(token)
-
         // write random bytes as APK
         val apk1 = getRandomByteArray(1337 * 1024)
-        storagePlugin.getOutputStream(token, "${packageInfo.packageName}.apk").writeAndClose(apk1)
+        backend.save(
+            LegacyAppBackupFile.Blob(token, "${packageInfo.packageName}.apk"),
+            getSaver(apk1)
+        )
 
         // assert that read APK bytes match what was written
         assertReadEquals(
@@ -181,8 +152,10 @@ class PluginTest : KoinComponent {
         val suffix2 = getRandomBase64(23)
         val apk2 = getRandomByteArray(23 * 1024 * 1024)
 
-        storagePlugin.getOutputStream(token, "${packageInfo2.packageName}$suffix2.apk")
-            .writeAndClose(apk2)
+        backend.save(
+            LegacyAppBackupFile.Blob(token, "${packageInfo2.packageName}$suffix2.apk"),
+            getSaver(apk2)
+        )
 
         // assert that read APK bytes match what was written
         assertReadEquals(
@@ -193,48 +166,36 @@ class PluginTest : KoinComponent {
 
     @Test
     fun testBackupRestore() = runBlocking {
-        // initialize storage with given token
-        initStorage(token)
-
         val name1 = getRandomBase64()
         val name2 = getRandomBase64()
 
-        // no data available initially
-        assertFalse(storagePlugin.hasData(token, name1))
-        assertFalse(storagePlugin.hasData(token, name2))
-
         // write full backup data
         val data = getRandomByteArray(5 * 1024 * 1024)
-        storagePlugin.getOutputStream(token, name1).writeAndClose(data)
-
-        // data is available now, but only this token
-        assertTrue(storagePlugin.hasData(token, name1))
-        assertFalse(storagePlugin.hasData(token + 1, name1))
+        backend.save(LegacyAppBackupFile.Blob(token, name1), getSaver(data))
 
         // restore data matches backed up data
-        assertReadEquals(data, storagePlugin.getInputStream(token, name1))
+        assertReadEquals(data, backend.load(LegacyAppBackupFile.Blob(token, name1)))
 
         // write and check data for second package
         val data2 = getRandomByteArray(5 * 1024 * 1024)
-        storagePlugin.getOutputStream(token, name2).writeAndClose(data2)
-        assertTrue(storagePlugin.hasData(token, name2))
-        assertReadEquals(data2, storagePlugin.getInputStream(token, name2))
+        backend.save(LegacyAppBackupFile.Blob(token, name2), getSaver(data2))
+        assertReadEquals(data2, backend.load(LegacyAppBackupFile.Blob(token, name2)))
 
         // remove data of first package again and ensure that no more data is found
-        storagePlugin.removeData(token, name1)
-        assertFalse(storagePlugin.hasData(token, name1))
-
-        // second package is still there
-        assertTrue(storagePlugin.hasData(token, name2))
+        backend.remove(LegacyAppBackupFile.Blob(token, name1))
 
         // ensure that it gets deleted as well
-        storagePlugin.removeData(token, name2)
-        assertFalse(storagePlugin.hasData(token, name2))
+        backend.remove(LegacyAppBackupFile.Blob(token, name2))
     }
 
-    private fun initStorage(token: Long) = runBlocking {
-        every { mockedSettingsManager.getToken() } returns token
-        storagePlugin.initializeDevice()
+    private fun getSaver(bytes: ByteArray) = object : BackendSaver {
+        override val size: Long = bytes.size.toLong()
+        override val sha256: String? = null
+
+        override fun save(outputStream: OutputStream): Long {
+            outputStream.write(bytes)
+            return size
+        }
     }
 
 }

@@ -23,7 +23,7 @@ public class FileSelectionManager {
     public val files: StateFlow<List<FilesItem>> = mFiles.asStateFlow()
 
     @UiThread
-    public fun onSnapshotChosen(snapshot: BackupSnapshot) {
+    public fun onSnapshotChosen(snapshot: BackupSnapshot, badChunkIds: Set<String>? = null) {
         // clear previous state if existing
         clearState()
         // store snapshot for later
@@ -31,10 +31,10 @@ public class FileSelectionManager {
 
         // cache files from snapshot within [RestorableFile] (for easier processing)
         snapshot.mediaFilesList.forEach { mediaFile ->
-            cacheFileItem(RestorableFile(mediaFile))
+            cacheFileItem(RestorableFile(mediaFile), badChunkIds)
         }
         snapshot.documentFilesList.forEach { documentFile ->
-            cacheFileItem(RestorableFile(documentFile))
+            cacheFileItem(RestorableFile(documentFile), badChunkIds)
         }
         // figure out indentation level and display names for folders
         val sortedFolders = allFiles.keys.sorted()
@@ -55,6 +55,7 @@ public class FileSelectionManager {
                 size = size,
                 lastModified = if (lastModified == -1L) null else lastModified,
                 selected = true,
+                hasIssue = fileItems.any { it.hasIssue },
                 partiallySelected = false,
                 expanded = false,
             )
@@ -117,8 +118,15 @@ public class FileSelectionManager {
         return snapshotBuilder.build()
     }
 
-    private fun cacheFileItem(restorableFile: RestorableFile) {
-        val fileItem = FileItem(restorableFile, 0, true)
+    private fun cacheFileItem(restorableFile: RestorableFile, badChunkIds: Set<String>?) {
+        val fileItem = FileItem(
+            file = restorableFile,
+            level = 0,
+            selected = true,
+            hasIssue = if (badChunkIds == null) false else {
+                restorableFile.chunkIds.intersect(badChunkIds).isNotEmpty()
+            },
+        )
         allFiles.getOrPut(restorableFile.dir) {
             mutableListOf()
         }.add(fileItem)
@@ -206,7 +214,7 @@ public class FileSelectionManager {
         )
     }
 
-    private fun clearState() {
+    internal fun clearState() {
         snapshot = null
         expandedFolder = null
         allFolders.clear()

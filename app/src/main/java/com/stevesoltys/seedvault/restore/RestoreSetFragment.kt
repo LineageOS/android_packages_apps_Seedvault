@@ -17,11 +17,12 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.stevesoltys.seedvault.R
-import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import com.stevesoltys.seedvault.transport.restore.RestorableBackup
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class RestoreSetFragment : Fragment() {
 
-    private val viewModel: RestoreViewModel by sharedViewModel()
+    private val viewModel: RestoreViewModel by activityViewModel()
 
     private lateinit var listView: RecyclerView
     private lateinit var progressBar: ProgressBar

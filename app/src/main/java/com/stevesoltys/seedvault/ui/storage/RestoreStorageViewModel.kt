@@ -9,17 +9,16 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.stevesoltys.seedvault.R
-import com.stevesoltys.seedvault.plugins.StoragePluginManager
-import com.stevesoltys.seedvault.plugins.saf.DIRECTORY_ROOT
-import com.stevesoltys.seedvault.plugins.saf.SafHandler
-import com.stevesoltys.seedvault.plugins.saf.SafStorage
-import com.stevesoltys.seedvault.plugins.webdav.WebDavHandler
-import com.stevesoltys.seedvault.plugins.webdav.WebDavProperties
-import com.stevesoltys.seedvault.plugins.webdav.WebDavStoragePlugin
+import com.stevesoltys.seedvault.backend.BackendManager
+import com.stevesoltys.seedvault.backend.saf.SafHandler
+import com.stevesoltys.seedvault.backend.webdav.WebDavHandler
 import com.stevesoltys.seedvault.settings.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.IOException
+import org.calyxos.seedvault.core.backends.Backend
+import org.calyxos.seedvault.core.backends.Constants.DIRECTORY_ROOT
+import org.calyxos.seedvault.core.backends.saf.SafProperties
+import org.calyxos.seedvault.core.backends.webdav.WebDavProperties
 
 private val TAG = RestoreStorageViewModel::class.java.simpleName
 
@@ -28,25 +27,27 @@ internal class RestoreStorageViewModel(
     safHandler: SafHandler,
     webDavHandler: WebDavHandler,
     settingsManager: SettingsManager,
-    storagePluginManager: StoragePluginManager,
-) : StorageViewModel(app, safHandler, webDavHandler, settingsManager, storagePluginManager) {
+    backendManager: BackendManager,
+) : StorageViewModel(app, safHandler, webDavHandler, settingsManager, backendManager) {
 
     override val isRestoreOperation = true
 
-    override fun onSafUriSet(safStorage: SafStorage) {
+    override fun onSafUriSet(safProperties: SafProperties) {
         viewModelScope.launch(Dispatchers.IO) {
             val hasBackup = try {
-                safHandler.hasAppBackup(safStorage)
-            } catch (e: IOException) {
-                Log.e(TAG, "Error reading URI: ${safStorage.uri}", e)
-                false
+                safHandler.hasAppBackup(safProperties)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading URI: ${safProperties.uri}", e)
+                val errorMsg = app.getString(R.string.restore_set_error) + "\n\n$e"
+                mLocationChecked.postEvent(LocationResult(errorMsg))
+                return@launch
             }
             if (hasBackup) {
-                safHandler.save(safStorage)
-                safHandler.setPlugin(safStorage)
+                safHandler.save(safProperties)
+                safHandler.setPlugin(safProperties)
                 mLocationChecked.postEvent(LocationResult())
             } else {
-                Log.w(TAG, "Location was rejected: ${safStorage.uri}")
+                Log.w(TAG, "Location was rejected: ${safProperties.uri}")
 
                 // notify the UI that the location was invalid
                 val errorMsg =
@@ -56,17 +57,19 @@ internal class RestoreStorageViewModel(
         }
     }
 
-    override fun onWebDavConfigSet(properties: WebDavProperties, plugin: WebDavStoragePlugin) {
+    override fun onWebDavConfigSet(properties: WebDavProperties, backend: Backend) {
         viewModelScope.launch(Dispatchers.IO) {
             val hasBackup = try {
-                webdavHandler.hasAppBackup(plugin)
-            } catch (e: IOException) {
+                webdavHandler.hasAppBackup(backend)
+            } catch (e: Exception) {
                 Log.e(TAG, "Error reading: ${properties.config.url}", e)
-                false
+                val errorMsg = app.getString(R.string.restore_set_error) + "\n\n$e"
+                mLocationChecked.postEvent(LocationResult(errorMsg))
+                return@launch
             }
             if (hasBackup) {
                 webdavHandler.save(properties)
-                webdavHandler.setPlugin(properties, plugin)
+                webdavHandler.setPlugin(properties, backend)
                 mLocationChecked.postEvent(LocationResult())
             } else {
                 Log.w(TAG, "Location was rejected: ${properties.config.url}")

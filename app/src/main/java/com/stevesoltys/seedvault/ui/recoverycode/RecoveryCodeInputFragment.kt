@@ -26,6 +26,7 @@ import android.widget.TextView
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.getMainExecutor
 import androidx.fragment.app.Fragment
@@ -38,14 +39,14 @@ import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputLayout
 import com.stevesoltys.seedvault.R
 import com.stevesoltys.seedvault.isDebugBuild
-import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import java.util.Locale
 
 internal const val ARG_FOR_NEW_CODE = "forStoringNewCode"
 
 class RecoveryCodeInputFragment : Fragment() {
 
-    private val viewModel: RecoveryCodeViewModel by sharedViewModel()
+    private val viewModel: RecoveryCodeViewModel by activityViewModel()
 
     private lateinit var introText: TextView
     private lateinit var doneButton: Button
@@ -105,7 +106,15 @@ class RecoveryCodeInputFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        activity?.setTitle(R.string.recovery_code_title)
+        view.requireViewById<Toolbar>(R.id.toolbar).apply {
+            if (viewModel.isRestore) {
+                visibility = GONE
+            } else {
+                setNavigationOnClickListener {
+                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        }
 
         if (viewModel.isRestore) {
             introText.setText(R.string.recovery_code_input_intro)

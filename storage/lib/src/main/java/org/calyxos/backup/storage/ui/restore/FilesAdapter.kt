@@ -11,6 +11,7 @@ import android.text.format.DateUtils.getRelativeTimeSpanString
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.CheckBox
@@ -46,7 +47,7 @@ private class FilesItemCallback : DiffUtil.ItemCallback<FilesItem>() {
 
 internal class FilesAdapter(
     private val onExpandClicked: (FolderItem) -> Unit,
-    private val onCheckedChanged: (FilesItem) -> Unit,
+    private val onCheckedChanged: ((FilesItem) -> Unit)?,
 ) : ListAdapter<FilesItem, FilesViewHolder>(FilesItemCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FilesViewHolder {
@@ -62,7 +63,9 @@ internal class FilesAdapter(
 
         private val context = itemView.context
         private val expandView: ImageView = itemView.findViewById(R.id.expandView)
+        private val warningView: ImageView = itemView.findViewById(R.id.warningImageView)
         private val nameView: TextView = itemView.findViewById(R.id.nameView)
+        private val errorView: TextView = itemView.findViewById(R.id.errorView)
         private val infoView: TextView = itemView.findViewById(R.id.infoView)
         private val checkBox: CheckBox = itemView.findViewById(R.id.checkBox)
 
@@ -88,7 +91,9 @@ internal class FilesAdapter(
                 else checkBox.toggle()
             }
             itemView.updatePadding(left = indentPadding * item.level)
+            warningView.visibility = if (item.hasIssue) VISIBLE else GONE
             nameView.text = item.name
+            errorView.visibility = if (item.hasIssue && item is FileItem) VISIBLE else GONE
 
             val now = System.currentTimeMillis()
             var text = Formatter.formatShortFileSize(context, item.size)
@@ -100,11 +105,16 @@ internal class FilesAdapter(
                 text += " - $numStr"
             }
             infoView.text = text
-            // unset and re-reset onCheckedChangeListener while updating checked state
-            checkBox.setOnCheckedChangeListener(null)
-            checkBox.isChecked = item.selected
-            checkBox.setOnCheckedChangeListener { _, _ ->
-                onCheckedChanged(item)
+            if (onCheckedChanged == null) {
+                checkBox.visibility = GONE
+            } else {
+                // unset and re-reset onCheckedChangeListener while updating checked state
+                checkBox.setOnCheckedChangeListener(null)
+                checkBox.isChecked = item.selected
+                checkBox.setOnCheckedChangeListener { _, _ ->
+                    onCheckedChanged.invoke(item)
+                }
+                checkBox.visibility = VISIBLE
             }
             if (item is FolderItem && item.partiallySelected) {
                 checkBox.buttonDrawable = indeterminateDrawable

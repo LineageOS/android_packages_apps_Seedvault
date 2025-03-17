@@ -11,6 +11,7 @@ import android.view.View
 import android.view.View.GONE
 import android.view.View.INVISIBLE
 import android.view.View.VISIBLE
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -33,6 +34,7 @@ internal abstract class AppViewHolder(protected val v: View) : RecyclerView.View
     protected val appStatus: ImageView = v.requireViewById(R.id.appStatus)
     protected val progressBar: ProgressBar = v.requireViewById(R.id.progressBar)
     protected val checkBox: MaterialCheckBox = v.requireViewById(R.id.checkboxView)
+    protected val button: Button = v.requireViewById(R.id.button)
 
     init {
         // don't use clickable background by default

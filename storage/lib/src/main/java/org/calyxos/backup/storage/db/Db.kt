@@ -5,8 +5,11 @@
 
 package org.calyxos.backup.storage.db
 
+import android.content.Context
 import android.net.Uri
+import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
@@ -14,15 +17,25 @@ import androidx.room.TypeConverters
 internal const val DB_MAX_OP = 750
 
 @Database(
-    version = 1,
-    exportSchema = false,
+    version = 2,
+    exportSchema = true,
     entities = [StoredUri::class, CachedFile::class, CachedChunk::class],
+    autoMigrations = [
+        AutoMigration(1, 2),
+    ],
 )
 @TypeConverters(Converters::class)
 internal abstract class Db : RoomDatabase() {
     abstract fun getUriStore(): UriStore
     abstract fun getFilesCache(): FilesCache
     abstract fun getChunksCache(): ChunksCache
+
+    internal companion object {
+        fun build(context: Context): Db {
+            return Room.databaseBuilder(context, Db::class.java, "seedvault-storage-local-cache")
+                .build()
+        }
+    }
 
     fun <T> applyInParts(list: Collection<T>, apply: (list: Collection<T>) -> Unit) =
         runInTransaction {

@@ -9,16 +9,18 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import org.calyxos.backup.storage.SnapshotRetriever
 import org.calyxos.backup.storage.api.RestoreObserver
 import org.calyxos.backup.storage.api.SnapshotItem
 import org.calyxos.backup.storage.api.SnapshotResult
-import org.calyxos.backup.storage.api.StoragePlugin
 import org.calyxos.backup.storage.api.StoredSnapshot
 import org.calyxos.backup.storage.backup.Backup
 import org.calyxos.backup.storage.backup.BackupSnapshot
 import org.calyxos.backup.storage.crypto.StreamCrypto
+import org.calyxos.backup.storage.getBackupSnapshotsForRestore
 import org.calyxos.backup.storage.measure
-import org.calyxos.backup.storage.plugin.SnapshotRetriever
+import org.calyxos.seedvault.core.backends.IBackendManager
+import org.calyxos.seedvault.core.crypto.KeyManager
 import java.io.IOException
 import java.io.InputStream
 import java.security.GeneralSecurityException
@@ -27,19 +29,20 @@ private const val TAG = "Restore"
 
 internal class Restore(
     context: Context,
-    private val storagePluginGetter: () -> StoragePlugin,
+    private val backendManager: IBackendManager,
+    private val keyManager: KeyManager,
     private val snapshotRetriever: SnapshotRetriever,
     fileRestore: FileRestore,
     streamCrypto: StreamCrypto = StreamCrypto,
 ) {
 
-    private val storagePlugin get() = storagePluginGetter()
+    private val backend get() = backendManager.backend
     private val streamKey by lazy {
-        // This class might get instantiated before the StoragePlugin had time to provide the key
+        // This class might get instantiated before the Backend had time to provide the key
         // so we need to get it lazily here to prevent crashes. We can still crash later,
         // if the plugin is not providing a key as it should when performing calls into this class.
         try {
-            streamCrypto.deriveStreamKey(storagePlugin.getMasterKey())
+            streamCrypto.deriveStreamKey(keyManager.getMainKey())
         } catch (e: GeneralSecurityException) {
             throw AssertionError(e)
         }
@@ -47,13 +50,13 @@ internal class Restore(
 
     // lazily instantiate these, so they don't try to get the streamKey too early
     private val zipChunkRestore by lazy {
-        ZipChunkRestore(storagePluginGetter, fileRestore, streamCrypto, streamKey)
+        ZipChunkRestore(backendManager, fileRestore, streamCrypto, streamKey)
     }
     private val singleChunkRestore by lazy {
-        SingleChunkRestore(storagePluginGetter, fileRestore, streamCrypto, streamKey)
+        SingleChunkRestore(backendManager, fileRestore, streamCrypto, streamKey)
     }
     private val multiChunkRestore by lazy {
-        MultiChunkRestore(context, storagePluginGetter, fileRestore, streamCrypto, streamKey)
+        MultiChunkRestore(context, backendManager, fileRestore, streamCrypto, streamKey)
     }
 
     fun getBackupSnapshots(): Flow<SnapshotResult> = flow {
@@ -61,7 +64,7 @@ internal class Restore(
         val time = measure {
             val list = try {
                 // get all available backups, they may not be usable
-                storagePlugin.getBackupSnapshotsForRestore().sortedByDescending { storedSnapshot ->
+                backend.getBackupSnapshotsForRestore().sortedByDescending { storedSnapshot ->
                     storedSnapshot.timestamp
                 }.map { storedSnapshot ->
                     // as long as snapshot is null, it can't be used for restore
@@ -84,7 +87,7 @@ internal class Restore(
                         snapshot = snapshotRetriever.getSnapshot(streamKey, oldItem.storedSnapshot)
                     )
                 } catch (e: Exception) {
-                    Log.e("TAG", "Error retrieving snapshot X ${oldItem.time}", e)
+                    Log.e(TAG, "Error retrieving snapshot ${oldItem.time}", e)
                     null
                 }
                 if (item == null) {
@@ -153,13 +156,15 @@ internal class Restore(
 @Throws(IOException::class, GeneralSecurityException::class)
 internal fun InputStream.readVersion(expectedVersion: Int? = null): Int {
     val version = read()
-    if (version == -1) throw IOException("File empty!")
+    if (version == -1) throw FileEmptyException()
     if (expectedVersion != null && version != expectedVersion) {
         throw GeneralSecurityException("Expected version $expectedVersion, not $version")
     }
-    if (version > Backup.VERSION) {
-        // TODO maybe throw a different exception here and tell the user?
-        throw IOException("Got version $version which is higher than what is supported.")
-    }
+    if (version > Backup.VERSION) throw UnsupportedVersionException(
+        "Got version $version which is higher than what is supported."
+    )
     return version
 }
+
+internal class FileEmptyException : IOException("File empty!")
+internal class UnsupportedVersionException(msg: String) : IOException(msg)

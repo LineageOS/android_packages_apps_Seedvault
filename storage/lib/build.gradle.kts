@@ -6,6 +6,7 @@ import com.google.protobuf.gradle.id
  */
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.androidx.room)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.protobuf)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -32,6 +33,10 @@ android {
         }
     }
 
+    sourceSets {
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -46,14 +51,18 @@ android {
         )
     }
 
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
+
     protobuf {
         protoc {
-            if ("aarch64" == System.getProperty("os.arch")) {
+            artifact = if ("aarch64" == System.getProperty("os.arch")) {
                 // mac m1
-                artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}:osx-x86_64"
+                "com.google.protobuf:protoc:${libs.versions.protobuf.get()}:osx-x86_64"
             } else {
                 // other
-                artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
+                "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
             }
         }
         generateProtoTasks {
@@ -81,6 +90,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
     implementation(libs.bundles.kotlin)
     implementation(libs.androidx.core)
     implementation(libs.androidx.fragment)
@@ -89,10 +99,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.documentfile)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.google.material)
     implementation(libs.androidx.room.runtime)
     implementation(libs.google.protobuf.javalite)
-    implementation(libs.google.tink.android)
+    implementation(libs.squareup.okio)
 
     ksp(group = "androidx.room", name = "room-compiler", version = libs.versions.room.get())
     lintChecks(libs.thirdegg.lint.rules)
@@ -100,6 +111,7 @@ dependencies {
     testImplementation("io.mockk:mockk:${libs.versions.mockk.get()}")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:${libs.versions.kotlin.get()}")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.room:room-testing:${libs.versions.room.get()}")
     androidTestImplementation(
         "androidx.test.espresso:espresso-core:${libs.versions.espresso.get()}"
     )

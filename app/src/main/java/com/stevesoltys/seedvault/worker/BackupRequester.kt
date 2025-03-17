@@ -8,10 +8,16 @@ package com.stevesoltys.seedvault.worker
 import android.app.backup.BackupManager
 import android.app.backup.IBackupManager
 import android.content.Context
+import android.content.Intent
 import android.os.RemoteException
 import android.util.Log
+import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
-import com.stevesoltys.seedvault.BackupMonitor
+import androidx.core.content.ContextCompat.startForegroundService
+import com.stevesoltys.seedvault.settings.SettingsManager
+import com.stevesoltys.seedvault.storage.StorageBackupService
+import com.stevesoltys.seedvault.storage.StorageBackupService.Companion.EXTRA_START_APP_BACKUP
+import com.stevesoltys.seedvault.transport.backup.BackupTransportMonitor
 import com.stevesoltys.seedvault.transport.backup.PackageService
 import com.stevesoltys.seedvault.ui.notification.BackupNotificationManager
 import com.stevesoltys.seedvault.ui.notification.NotificationBackupObserver
@@ -32,18 +38,42 @@ internal const val NUM_PACKAGES_PER_TRANSACTION = 100
 internal class BackupRequester(
     context: Context,
     private val backupManager: IBackupManager,
+    private val monitor: BackupTransportMonitor,
     val packageService: PackageService,
 ) : KoinComponent {
 
+    companion object {
+        @UiThread
+        fun requestFilesAndAppBackup(
+            context: Context,
+            settingsManager: SettingsManager,
+            backupManager: IBackupManager,
+            reschedule: Boolean = false,
+        ) {
+            val appBackupEnabled = backupManager.isBackupEnabled
+            // TODO eventually, we could think about running files and app backup simultaneously
+            if (settingsManager.isStorageBackupEnabled()) {
+                val i = Intent(context, StorageBackupService::class.java)
+                // this starts an app backup afterwards
+                i.putExtra(EXTRA_START_APP_BACKUP, appBackupEnabled)
+                Log.i(TAG, "Starting foreground service for file backup...")
+                Log.i(TAG, "  appBackupEnabled = $appBackupEnabled")
+                startForegroundService(context, i)
+            } else if (appBackupEnabled) {
+                Log.i(TAG, "File backup disabled, starting only AppBackupWorker...")
+                AppBackupWorker.scheduleNow(context, reschedule)
+            } else {
+                Log.d(TAG, "Neither files nor app backup enabled, do nothing.")
+            }
+        }
+    }
+
     val isBackupEnabled: Boolean get() = backupManager.isBackupEnabled
 
-    private val packages = packageService.eligiblePackages
-    private val observer = NotificationBackupObserver(
-        context = context,
-        backupRequester = this,
-        requestedPackages = packages.size,
-    )
-    private val monitor = BackupMonitor()
+    private val packages by lazy { packageService.eligiblePackages }
+    private val observer by lazy {
+        NotificationBackupObserver(context, this, packages.size)
+    }
 
     /**
      * The current package index.
@@ -60,6 +90,11 @@ internal class BackupRequester(
 
         return request(getNextChunk())
     }
+
+    /**
+     * Returns true, if there are more packages waiting to get backed up by calling [requestNext].
+     */
+    val hasNext: Boolean get() = packageIndex < packages.size
 
     /**
      * Backs up the next chunk of packages.
@@ -86,7 +121,7 @@ internal class BackupRequester(
         } catch (e: RemoteException) {
             Log.e(TAG, "Error during backup: ", e)
             val nm: BackupNotificationManager = GlobalContext.get().get()
-            nm.onBackupError()
+            nm.onFixableBackupError()
         }
         return if (result == BackupManager.SUCCESS) {
             Log.i(TAG, "Backup request succeeded")

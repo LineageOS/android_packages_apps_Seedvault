@@ -1,15 +1,22 @@
 # Seedvault
 [![Build](https://github.com/seedvault-app/seedvault/actions/workflows/build.yml/badge.svg)](https://github.com/seedvault-app/seedvault/actions/workflows/build.yml)
+[![Translation](https://hosted.weblate.org/widget/calyxos/seedvault/svg-badge.svg)](https://hosted.weblate.org/engage/calyxos)
 
 A backup application for the [Android Open Source Project](https://source.android.com/).
+Needs to be [integrated](https://github.com/seedvault-app/seedvault/wiki/ROM-Integration)
+in your Android ROM and **can not** be installed as a regular app.
 
-If you are having an issue/question, please look at our [FAQ](https://github.com/seedvault-app/seedvault/wiki/FAQ).
+If you are having an issue/question,
+please look at our [FAQ](https://github.com/seedvault-app/seedvault/wiki/FAQ)
+or [ask a new question](https://github.com/seedvault-app/seedvault/discussions).
 
 ## Components
 
 * [Local Contacts Backup](contactsbackup) - an app that backs up local on-device contacts
-* [Storage library](storage) - a library handling efficient backup of files
+* [File backup library](storage) - a library handling efficient backup of files
+  ([documentation](storage/doc/design.md))
 * [Seedvault app](app) - the main app where all functionality comes together
+  ([documentation](doc/README.md))
 
 ## Features
 - Backup application data to a flash drive.
@@ -19,24 +26,27 @@ If you are having an issue/question, please look at our [FAQ](https://github.com
 
 ## Requirements
 
-SeedVault is developed along with AOSP releases
+SeedVault is developed along with AOSP releases.
 
-We update it every time Google releases a new Android version, make any changes required for basic functionality, and any improvements possible through API changes in the OS.
+We update it every time Google releases a new Android version, 
+make any changes required for basic functionality,
+and any improvements possible through API changes in the OS.
 
-This means that for ROMs using SeedVault it's recommended to use the same branch as your android version
+This means that for ROMs using SeedVault it's recommended
+to use the same branch as your android version
 
 - This current branch `android14` is meant for usage with Android 14
-- This is indicated by the version name starting with `14`, and the version code starting with `34` - the Android 14 API version
+- This is indicated by the version name starting with `14`,
+  and the version code starting with `34` - the Android 14 API version
 
-For older versions of Android, check out [the branches](https://github.com/seedvault-app/seedvault/branches).
+For older versions of Android,
+check out [the branches](https://github.com/seedvault-app/seedvault/branches).
 
-Trying to use an older branch on a newer version may lead to issues and is not something we can support.
-
-## Getting Started
-- Check out [the wiki](https://github.com/seedvault-app/seedvault/wiki) for information on building the application with 
-AOSP.
+Trying to use an older branch on a newer version may lead to issues
+and is not something we can support.
 
 ## What makes this different?
+
 This application is compiled with the operating system and does not require a rooted device for use.
 It uses the same internal APIs as `adb backup` which is deprecated and thus needs a replacement.
 
@@ -60,13 +70,21 @@ It uses the same internal APIs as `adb backup` which is deprecated and thus need
 ## Contributing
 Bug reports and pull requests are welcome on GitHub at https://github.com/seedvault-app/seedvault.
 
-See [DEVELOPMENT.md](app/development/DEVELOPMENT.md) for information on developing Seedvault locally.
+See [DEVELOPMENT.md](app/development/DEVELOPMENT.md) for information
+on developing Seedvault locally.
 
-This project aims to adhere to the [official Kotlin coding style](https://developer.android.com/kotlin/style-guide).
+This project aims to adhere to the
+[official Kotlin coding style](https://developer.android.com/kotlin/style-guide).
+
+### Translating
+Seedvault can be translated with Weblate, as provided by [CalyxOS](https://hosted.weblate.org/projects/calyxos/).
+
+[![Translation status](https://hosted.weblate.org/widget/calyxos/seedvault/horizontal-auto.svg)](https://hosted.weblate.org/engage/calyxos/)
 
 ## Third-party tools
 
-> **⚠ WARNING**: the Seedvault developers make no guarantees about external software projects.
+> [!WARNING]
+> The Seedvault developers make no guarantees about external software projects.
 > Please be aware that disclosing your secret recovery key to other software has security risks.
 
 The [Seedvault backup parser](https://github.com/tlambertz/seedvault_backup_parser)
@@ -78,7 +96,8 @@ allows you to decrypt and inspect your backups from newer versions of Seedvault 
 It is currently work-in-progress.
 
 ## License
-This application is available as open source under the terms of the [Apache-2.0 License](https://opensource.org/licenses/Apache-2.0).
+This application is available as open source under the terms
+of the [Apache-2.0 License](https://opensource.org/licenses/Apache-2.0).
 
 ## Funding
 
@@ -94,3 +113,12 @@ a fund established by [NLnet](https://nlnet.nl)
 with financial support from the European Commission's Next Generation Internet programme,
 under the aegis of DG Communications Networks, Content and Technology
 under grant agreement No 825310.
+
+### NGI0 Entrust Fund
+
+This project was funded through the
+[NGI0 Entrust Fund](https://nlnet.nl/project/SeedVault-Integrity/),
+a fund established by [NLnet](https://nlnet.nl)
+with financial support from the European Commission's Next Generation Internet programme,
+under the aegis of DG Communications Networks, Content and Technology
+under grant agreement No 101069594.

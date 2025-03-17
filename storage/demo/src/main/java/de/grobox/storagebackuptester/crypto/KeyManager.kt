@@ -10,17 +10,17 @@ import android.security.keystore.KeyProperties.PURPOSE_ENCRYPT
 import android.security.keystore.KeyProperties.PURPOSE_SIGN
 import android.security.keystore.KeyProperties.PURPOSE_VERIFY
 import android.security.keystore.KeyProtection
+import org.calyxos.seedvault.core.crypto.CoreCrypto.ALGORITHM_HMAC
 import java.security.KeyStore
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-object KeyManager {
+object KeyManager : org.calyxos.seedvault.core.crypto.KeyManager {
 
     private const val KEY_SIZE = 256
-    internal const val KEY_SIZE_BYTES = KEY_SIZE / 8
+    private const val KEY_SIZE_BYTES = KEY_SIZE / 8
     private const val KEY_ALIAS_MASTER = "com.stevesoltys.seedvault.master"
     private const val ANDROID_KEY_STORE = "AndroidKeyStore"
-    private const val ALGORITHM_HMAC = "HmacSHA256"
 
     private const val FAKE_SEED = "This is a legacy backup key 1234"
 
@@ -42,9 +42,9 @@ object KeyManager {
         keyStore.setEntry(KEY_ALIAS_MASTER, ksEntry, getKeyProtection())
     }
 
-    fun hasMasterKey(): Boolean = keyStore.containsAlias(KEY_ALIAS_MASTER)
+    fun hasMainKey(): Boolean = keyStore.containsAlias(KEY_ALIAS_MASTER)
 
-    fun getMasterKey(): SecretKey {
+    override fun getMainKey(): SecretKey {
         val ksEntry = keyStore.getEntry(KEY_ALIAS_MASTER, null) as KeyStore.SecretKeyEntry
         return ksEntry.secretKey
     }
