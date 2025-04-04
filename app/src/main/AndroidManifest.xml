@@ -6,8 +6,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.stevesoltys.seedvault"
-    android:versionCode="35050040"
-    android:versionName="15-5.4">
+    android:versionCode="35050050"
+    android:versionName="15-5.5">
     <!--
     The version code is the targeted SDK_VERSION plus 6 digits for our own version code.
     The version name is the targeted Android version followed by - and our own version name.
@@ -78,6 +78,7 @@
 
     <!-- Used for periodic storage backups -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Permission used to open settings -->
     <permission
@@ -181,24 +182,21 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
-        <!-- Used to start actual BackupService depending on scheduling criteria -->
+        <!-- Does app backup finalization as a foreground service -->
         <service
-            android:name=".storage.StorageBackupJobService"
+            android:name=".transport.backup.FinalizeBackupService"
             android:exported="false"
-            android:label="BackupJobService"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
+            android:foregroundServiceType="specialUse"
+            android:label="FinalizeBackupService">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Look, finalizing the backup is super important. We had the system kill our dataSync service, so what else should we do?"/>
+        </service>
         <!-- Does app restore as a foreground service -->
         <service
             android:name=".restore.RestoreService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:label="RestoreService" />
-        <!-- Does the actual file backup work as a foreground service -->
-        <service
-            android:name=".storage.StorageBackupService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync"
-            android:label="BackupService" />
         <!-- Does file restore as a foreground service -->
         <service
             android:name=".storage.StorageRestoreService"

@@ -138,7 +138,7 @@ internal class BackupNotificationManager(private val context: Context) {
     /**
      * Call after [onApkBackup] or [onAppsNotBackedUp] were called.
      */
-    fun onApkBackupDone() {
+    fun cancelBackupNotification() {
         nm.cancel(NOTIFICATION_ID_OBSERVER)
     }
 
@@ -352,8 +352,23 @@ internal class BackupNotificationManager(private val context: Context) {
             setOngoing(true)
             setShowWhen(false)
             priority = PRIORITY_LOW
+            setProgress(0, 0, true)
             foregroundServiceBehavior = FOREGROUND_SERVICE_IMMEDIATE
         }.build()
+    }
+
+    fun updatePruningNotification(blobsPruned: Int, totalBlobs: Int) {
+        Log.d(TAG, "pruning $blobsPruned/$totalBlobs")
+        val n = Builder(context, CHANNEL_ID_PRUNING).apply {
+            setSmallIcon(org.calyxos.backup.storage.R.drawable.ic_auto_delete)
+            setContentTitle(context.getString(R.string.notification_pruning_blobs_title))
+            setOngoing(true)
+            setShowWhen(false)
+            setProgress(totalBlobs, blobsPruned, false)
+            priority = PRIORITY_LOW
+            foregroundServiceBehavior = FOREGROUND_SERVICE_IMMEDIATE
+        }.build()
+        nm.notify(NOTIFICATION_ID_PRUNING, n)
     }
 
     /**
