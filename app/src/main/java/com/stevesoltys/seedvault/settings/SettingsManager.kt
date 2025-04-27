@@ -8,8 +8,9 @@ package com.stevesoltys.seedvault.settings
 import android.content.Context
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.hardware.usb.UsbDevice
-import android.net.Uri
 import androidx.annotation.UiThread
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
@@ -55,6 +56,7 @@ private const val PREF_KEY_BACKUP_APP_BLACKLIST = "backupAppBlacklist"
 
 private const val PREF_KEY_BACKUP_STORAGE = "backup_storage"
 internal const val PREF_KEY_LAST_BACKUP = "lastBackup"
+internal const val PREF_KEY_MIGRATION_UNIFIED_SCHEDULING = "migrationUnifiedScheduling"
 
 class SettingsManager(private val context: Context) {
 
@@ -81,13 +83,13 @@ class SettingsManager(private val context: Context) {
     var token: Long? = null
         private set(newToken) {
             if (newToken == null) {
-                prefs.edit()
-                    .remove(PREF_KEY_TOKEN)
-                    .apply()
+                prefs.edit {
+                    remove(PREF_KEY_TOKEN)
+                }
             } else {
-                prefs.edit()
-                    .putLong(PREF_KEY_TOKEN, newToken)
-                    .apply()
+                prefs.edit {
+                    putLong(PREF_KEY_TOKEN, newToken)
+                }
             }
             field = newToken
         }
@@ -105,9 +107,9 @@ class SettingsManager(private val context: Context) {
                 // check if this is an existing user that needs to be migrated
                 // this check could be removed after a reasonable migration time (added 2024)
                 if (prefs.getString(PREF_KEY_STORAGE_URI, null) != null) {
-                    prefs.edit()
-                        .putString(PREF_KEY_STORAGE_PLUGIN, StoragePluginType.SAF.name)
-                        .apply()
+                    prefs.edit {
+                        putString(PREF_KEY_STORAGE_PLUGIN, StoragePluginType.SAF.name)
+                    }
                     StoragePluginType.SAF
                 } else null
             } else savedType.let {
@@ -130,7 +132,7 @@ class SettingsManager(private val context: Context) {
     fun onSuccessfulBackupCompleted(token: Long) {
         this.token = token
         val now = System.currentTimeMillis()
-        prefs.edit().putLong(PREF_KEY_LAST_BACKUP, now).apply()
+        prefs.edit { putLong(PREF_KEY_LAST_BACKUP, now) }
         mLastBackupTime.postValue(now)
     }
 
@@ -140,24 +142,30 @@ class SettingsManager(private val context: Context) {
             BackendId.WEBDAV -> StoragePluginType.WEB_DAV
             else -> error("Unsupported plugin: ${plugin::class.java.simpleName}")
         }.name
-        prefs.edit()
-            .putString(PREF_KEY_STORAGE_PLUGIN, value)
-            .apply()
+        prefs.edit {
+            putString(PREF_KEY_STORAGE_PLUGIN, value)
+        }
+    }
+
+    fun clearStorageBackend() {
+        prefs.edit {
+            putString(PREF_KEY_STORAGE_PLUGIN, null)
+        }
     }
 
     fun setSafProperties(safProperties: SafProperties) {
-        prefs.edit()
-            .putString(PREF_KEY_STORAGE_URI, safProperties.uri.toString())
-            .putString(PREF_KEY_STORAGE_ROOT_ID, safProperties.rootId)
-            .putString(PREF_KEY_STORAGE_NAME, safProperties.name)
-            .putBoolean(PREF_KEY_STORAGE_IS_USB, safProperties.isUsb)
-            .putBoolean(PREF_KEY_STORAGE_REQUIRES_NETWORK, safProperties.requiresNetwork)
-            .apply()
+        prefs.edit {
+            putString(PREF_KEY_STORAGE_URI, safProperties.uri.toString())
+            putString(PREF_KEY_STORAGE_ROOT_ID, safProperties.rootId)
+            putString(PREF_KEY_STORAGE_NAME, safProperties.name)
+            putBoolean(PREF_KEY_STORAGE_IS_USB, safProperties.isUsb)
+            putBoolean(PREF_KEY_STORAGE_REQUIRES_NETWORK, safProperties.requiresNetwork)
+        }
     }
 
     fun getSafProperties(): SafProperties? {
         val uriStr = prefs.getString(PREF_KEY_STORAGE_URI, null) ?: return null
-        val uri = Uri.parse(uriStr)
+        val uri = uriStr.toUri()
         val name = prefs.getString(PREF_KEY_STORAGE_NAME, null)
             ?: throw IllegalStateException("no storage name")
         val isUsb = prefs.getBoolean(PREF_KEY_STORAGE_IS_USB, false)
@@ -168,19 +176,19 @@ class SettingsManager(private val context: Context) {
 
     fun setFlashDrive(usb: FlashDrive?) {
         if (usb == null) {
-            prefs.edit()
-                .remove(PREF_KEY_FLASH_DRIVE_NAME)
-                .remove(PREF_KEY_FLASH_DRIVE_SERIAL_NUMBER)
-                .remove(PREF_KEY_FLASH_DRIVE_VENDOR_ID)
-                .remove(PREF_KEY_FLASH_DRIVE_PRODUCT_ID)
-                .apply()
+            prefs.edit {
+                remove(PREF_KEY_FLASH_DRIVE_NAME)
+                remove(PREF_KEY_FLASH_DRIVE_SERIAL_NUMBER)
+                remove(PREF_KEY_FLASH_DRIVE_VENDOR_ID)
+                remove(PREF_KEY_FLASH_DRIVE_PRODUCT_ID)
+            }
         } else {
-            prefs.edit()
-                .putString(PREF_KEY_FLASH_DRIVE_NAME, usb.name)
-                .putString(PREF_KEY_FLASH_DRIVE_SERIAL_NUMBER, usb.serialNumber)
-                .putInt(PREF_KEY_FLASH_DRIVE_VENDOR_ID, usb.vendorId)
-                .putInt(PREF_KEY_FLASH_DRIVE_PRODUCT_ID, usb.productId)
-                .apply()
+            prefs.edit {
+                putString(PREF_KEY_FLASH_DRIVE_NAME, usb.name)
+                putString(PREF_KEY_FLASH_DRIVE_SERIAL_NUMBER, usb.serialNumber)
+                putInt(PREF_KEY_FLASH_DRIVE_VENDOR_ID, usb.vendorId)
+                putInt(PREF_KEY_FLASH_DRIVE_PRODUCT_ID, usb.productId)
+            }
         }
     }
 
@@ -203,11 +211,11 @@ class SettingsManager(private val context: Context) {
         }
 
     fun saveWebDavConfig(config: WebDavConfig) {
-        prefs.edit()
-            .putString(PREF_KEY_WEBDAV_URL, config.url)
-            .putString(PREF_KEY_WEBDAV_USER, config.username)
-            .putString(PREF_KEY_WEBDAV_PASS, config.password)
-            .apply()
+        prefs.edit {
+            putString(PREF_KEY_WEBDAV_URL, config.url)
+            putString(PREF_KEY_WEBDAV_USER, config.username)
+            putString(PREF_KEY_WEBDAV_PASS, config.password)
+        }
     }
 
     fun backupApks(): Boolean {
@@ -231,17 +239,17 @@ class SettingsManager(private val context: Context) {
      */
     fun disableBackup(packageName: String) {
         if (blacklistedApps.add(packageName)) {
-            prefs.edit().putStringSet(PREF_KEY_BACKUP_APP_BLACKLIST, blacklistedApps).apply()
+            prefs.edit { putStringSet(PREF_KEY_BACKUP_APP_BLACKLIST, blacklistedApps) }
         }
     }
 
-    fun isStorageBackupEnabled() = prefs.getBoolean(PREF_KEY_BACKUP_STORAGE, false)
+    fun isFileBackupEnabled() = prefs.getBoolean(PREF_KEY_BACKUP_STORAGE, false)
 
     @UiThread
     fun onAppBackupStatusChanged(status: AppStatus) {
         if (status.enabled) blacklistedApps.remove(status.packageName)
         else blacklistedApps.add(status.packageName)
-        prefs.edit().putStringSet(PREF_KEY_BACKUP_APP_BLACKLIST, blacklistedApps).apply()
+        prefs.edit { putStringSet(PREF_KEY_BACKUP_APP_BLACKLIST, blacklistedApps) }
     }
 
     val quota: Long = 3L * 1024 * 1024 * 1024 // 3 GiB for now
@@ -253,6 +261,19 @@ class SettingsManager(private val context: Context) {
      */
     val isFirstStart get() = prefs.getString(PREF_KEY_STORAGE_PLUGIN, null) == null
 
+    /**
+     * Runs the given migration [block], if the migration was not yet performed.
+     */
+    fun migrateToUnifiedScheduling(block: () -> Unit) {
+        val migrated = prefs.getBoolean(PREF_KEY_MIGRATION_UNIFIED_SCHEDULING, false)
+        if (!migrated) {
+            try {
+                block()
+            } finally {
+                prefs.edit { putBoolean(PREF_KEY_MIGRATION_UNIFIED_SCHEDULING, true) }
+            }
+        }
+    }
 }
 
 data class FlashDrive(
