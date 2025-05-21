@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b8d2c1d2_3a74b702",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2025-05-21T18:25:55Z",
+      "side": 1,
+      "message": "Pushed to https://github.com/chirayudesai/backup/tree/cd/lineage-22.2/15-5.6",
+      "revId": "94eb0f1d8c24783a592bc0ce9d1d23067b5208e5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
