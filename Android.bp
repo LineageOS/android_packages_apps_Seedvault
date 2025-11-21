@@ -61,7 +61,6 @@ android_app {
     certificate: "platform",
     privileged: true,
     required: [
-        "LocalContactsBackup",
         "com.stevesoltys.backup_allowlist",
         "com.stevesoltys.backup_default-permissions",
         "com.stevesoltys.backup_privapp_allowlist"
