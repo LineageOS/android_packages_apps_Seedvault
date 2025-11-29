@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1552886_07ddd531",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2025-11-29T17:24:56Z",
+      "side": 1,
+      "message": "Fixes QPR1 build, doesn\u0027t break 23.0",
+      "revId": "6723deaa73fd334eb42f503dc7e2dc5286f9b2da",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
