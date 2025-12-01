@@ -16,6 +16,23 @@
       "message": "Fixes QPR1 build, doesn\u0027t break 23.0",
       "revId": "6723deaa73fd334eb42f503dc7e2dc5286f9b2da",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25c647a2_48140c64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34519
+      },
+      "writtenOn": "2025-12-01T11:13:26Z",
+      "side": 1,
+      "message": "Required for 23.1",
+      "revId": "6723deaa73fd334eb42f503dc7e2dc5286f9b2da",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
