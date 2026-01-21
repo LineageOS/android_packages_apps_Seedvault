@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bae0dc6f_296f8108",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33572
+      },
+      "writtenOn": "2026-01-21T20:14:42Z",
+      "side": 1,
+      "message": "The changes are themselves already merged into Lineage, this is just for the version so it reflects properly, should help anyone debugging logs from Seedvault as to get an accurate version number",
+      "revId": "7bc83258a2a1b47ada6260160dd899cd1e53c23f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
