@@ -36,7 +36,7 @@
     <string name="recovery_code_input_intro">Gib deinen aus 12 Wörtern bestehenden Wiederherstellungscode ein, den du beim Konfigurieren der Sicherungen aufgeschrieben hast.</string>
     <string name="recovery_code_confirm_intro">Gib deinen aus 12 Wörtern bestehenden Wiederherstellungscode ein, um sicher zu gehen, dass er funktionieren wird, wenn du ihn brauchst.</string>
     <string name="storage_available_bytes"><xliff:g example="1 GB" id="size">%1$s</xliff:g> frei</string>
-    <string name="settings_backup_apk_dialog_message">Nach der Deaktivierung von APK Sicherung werden die App-Daten weiterhin gesichert. Sie werden jedoch nicht automatisch wiederhergestellt.\n\nDu musst alle deine Apps manuell installieren, obwohl die „Automatische Wiederherstellung“ aktiviert ist.</string>
+    <string name="settings_backup_apk_dialog_message">Nach der Deaktivierung von APK-Sicherung werden die App-Daten weiterhin gesichert. Sie werden jedoch nicht automatisch wiederhergestellt.\n\nDu musst alle deine Apps manuell installieren, obwohl die „Automatische Wiederherstellung“ aktiviert ist.</string>
     <string name="settings_backup_apk_summary">Sichert die Apps selbst. Andernfalls werden nur die App-Daten gesichert.</string>
     <string name="storage_check_fragment_restore_title">Suche nach Sicherungen…</string>
     <string name="storage_check_fragment_backup_title">Bereite Speicherort vor…</string>
@@ -48,20 +48,17 @@
     <string name="storage_check_fragment_error_button">Zurück</string>
     <string name="storage_check_fragment_permission_error">Es fehlen Schreib-Berechtigungen am Speicherort.</string>
     <string name="storage_check_fragment_backup_error">Ein Fehler trat beim Zugriff auf den Speicherort auf.</string>
-    <string name="storage_fake_nextcloud_summary_installed">Tippen, um ein Konto einzurichten</string>
-    <string name="storage_fake_nextcloud_summary">Tippen zum Installieren</string>
     <string name="storage_fake_drive_summary">muss angeschlossen sein</string>
     <string name="storage_fake_drive_title">USB-Speichergerät</string>
     <string name="storage_fragment_restore_title">Wo befinden sich deine Sicherungen\?</string>
     <string name="settings_backup_now">Jetzt sichern</string>
     <string name="settings_backup_exclude_apps">Apps ausschließen</string>
     <string name="settings_backup_status_summary">Letzte Sicherung: %1$s</string>
-    <string name="settings_backup_apk_dialog_disable">APK Sicherungen deaktivieren</string>
+    <string name="settings_backup_apk_dialog_disable">APK-Sicherungen deaktivieren</string>
     <string name="settings_backup_apk_dialog_cancel">Abbrechen</string>
-    <string name="settings_backup_apk_dialog_title">APK Sicherung wirklich deaktivieren?</string>
+    <string name="settings_backup_apk_dialog_title">APK-Sicherung wirklich deaktivieren?</string>
     <string name="settings_info">Alle Backups auf deinem Gerät sind verschlüsselt. Zum Wiederherstellen benötigst du dein aus 12 Wörtern bestehenden Wiederherstellungscode.</string>
-    <string name="settings_backup_apk_title">APK Sicherung</string>
-    <string name="settings_category_app_data_backup">App-Daten-Sicherung</string>
+    <string name="settings_backup_apk_title">APK-Sicherung</string>
     <string name="settings_auto_restore_summary_usb">Achtung: Dein %1$s muss für diese Aktion verbunden sein.</string>
     <string name="settings_auto_restore_summary">Bei der erneuten Installation einer App die gesicherten Daten und Einstellungen wiederherstellen.</string>
     <string name="settings_auto_restore_title">Automatische Wiederherstellung</string>
@@ -100,8 +97,6 @@
     <string name="restore_choose_restore_set">Wähle eine Sicherung aus, um sie wiederherzustellen</string>
     <string name="notification_restore_error_action">App deinstallieren</string>
     <string name="notification_success_text">%1$d von %2$d Apps gesichert (%3$s). Tippe, um mehr zu erfahren.</string>
-    <string name="notification_backup_already_running">Sicherung wird bereits durchgeführt</string>
-    <string name="storage_fake_nextcloud_summary_unavailable">Konto nicht verfügbar. Richte ein Konto ein (oder deaktivieren Passcode).</string>
     <string name="current_destination_string">Sicherungsstatus und Einstellungen</string>
     <string name="data_management_label">Seedvault Sicherung</string>
     <string name="about_version">Version: %s</string>
@@ -148,7 +143,6 @@
     <string name="recovery_code_auth_description">Eingabe deiner Geräteanmeldedaten zum Fortfahren</string>
     <string name="recovery_code_auth_title">Deine Bildschirmsperre erneut eingeben</string>
     <string name="storage_check_fragment_patience">Das kann einige Zeit dauern…</string>
-    <string name="storage_fake_nextcloud_summary_unavailable_market">Nicht installiert</string>
     <string name="settings_expert_title">Experteneinstellungen</string>
     <string name="settings_backup_storage_dialog_ok">Trotzdem aktivieren</string>
     <string name="settings_backup_storage_dialog_message">Das Sichern von Dateien ist beta und funktioniert möglicherweise nicht. Verlasse dich bei wichtigen Daten nicht darauf.</string>
@@ -158,7 +152,6 @@
     <string name="settings_backup_storage_title">Meine Dateien sichern</string>
     <string name="settings_category_storage">Dateisicherung (Beta)</string>
     <string name="settings_category_apps">App-Sicherung</string>
-    <string name="storage_fake_davx5_summary_installed">Tippe, um eine WebDAV-Verbindung einzurichten</string>
     <string name="error_no_store">Fehler: Kein App-Store installiert</string>
     <string name="settings_backup_storage_battery_optimization">Warnung: Keine automatischen Backups, da die Akkuoptimierung aktiv ist.</string>
     <string name="settings_backup_new_code_dialog_title">Neuer Wiederherstellungscode erforderlich</string>
@@ -168,8 +161,6 @@
     <string name="settings_backup_new_code_code_dialog_ok">Neuer Code</string>
     <string name="notification_error_no_main_key_title">Sicherungen deaktiviert</string>
     <string name="notification_error_no_main_key_text">Generiere einen neuen Wiederherstellungscode, um das Upgrade abzuschließen und weiterhin Sicherungen zu verwenden.</string>
-    <string name="storage_fake_davx5_summary_unavailable">WebDAV-Verbindung nicht verfügbar. Richte eine ein.</string>
-    <string name="notification_backup_disabled">Sicherung nicht aktiviert</string>
     <string name="backup_app_success">Daten gesichert</string>
     <string name="backup_app_warning">Warnhinweis zur Sicherung</string>
     <string name="restore_app_status_failed">Wiederherstellung fehlgeschlagen</string>
@@ -187,7 +178,6 @@
     <string name="settings_backup_dialog_title">App-Sicherung wirklich deaktivieren\?</string>
     <string name="settings_backup_dialog_message">Wenn du die Sicherung wieder aktivierst, kann der Sicherungsvorgang länger dauern als gewöhnlich, und es wird zusätzlicher Speicherplatz benötigt.</string>
     <string name="settings_backup_dialog_disable">Trotzdem deaktivieren</string>
-    <string name="storage_not_recommended"><xliff:g example="Skynet">%1$s</xliff:g> (Nicht empfohlen)</string>
     <string name="about_contributing_organizations_content"><a href="https://www.calyxinstitute.org">Calyx Institute</a> zur Verwendung in <a href="https://calyxos.org">CalyxOS</a>\n<a href="https://nlnet.nl/project/Seedvault/">NGI0 PET Fund by NLnet</a>\n<a href="https://nlnet.nl/project/SeedVault-Integrity/">NGI0 Entrust Fund by NLnet</a></string>
     <string name="about_contributor_headline">Mitwirkende</string>
     <string name="about_contributor_content">Eine <a href="https://github.com/seedvault-app/seedvault/graphs/contributors">Liste der Mitwirkenden</a> findest du auf GitHub.</string>
@@ -197,13 +187,13 @@
     <string name="storage_webdav_option_title">WebDAV-Cloud (Beta)</string>
     <string name="storage_webdav_option_summary">Integrierter direkter WebDAV-Zugang</string>
     <string name="storage_webdav_config_url">WebDAV-URL</string>
-    <string name="notification_apk_not_backed_up">Liste der Apps, die wir nicht sichern können, wird gespeichert.</string>
+    <string name="notification_apk_not_backed_up">Liste der Apps wird gespeichert, die wir nicht sichern können.</string>
     <string name="settings_backup_scheduling_title">Planung der Datensicherung</string>
     <string name="settings_scheduling_frequency_3_days">Alle 3 Tage</string>
     <string name="settings_backup_status_next_backup">Nächste Datensicherung: %1$s</string>
     <string name="settings_backup_status_next_backup_estimate">Nächste Datensicherung (Schätzung): %1$s</string>
     <string name="settings_backup_status_next_backup_past">sobald die Bedingungen erfüllt sind</string>
-    <string name="settings_backup_status_next_backup_usb">Die Datensicherung erfolgt automatisch, wenn Sie Ihr USB-Laufwerk anschließen</string>
+    <string name="settings_backup_status_next_backup_usb">Datensicherung erfolgt automatisch, wenn du dein USB-Laufwerk anschließt</string>
     <string name="settings_scheduling_frequency_title">Häufigkeit der Datensicherung</string>
     <string name="settings_scheduling_frequency_12_hours">Alle 12 Stunden</string>
     <string name="settings_scheduling_frequency_daily">Täglich</string>
@@ -212,7 +202,7 @@
     <string name="settings_scheduling_metered_title">Datensicherung bei Nutzung mobiler Daten</string>
     <string name="settings_scheduling_charging_title">Datensicherung nur beim Aufladen</string>
     <string name="notification_space_error_title">Unzureichender Speicherplatz für die Datensicherung</string>
-    <string name="storage_webdav_config_url_helper">Achten Sie darauf, dass Sie hier die vollständige URL eingeben. Für Nextcloud z. B. hat sie die Form https://yourserver.com/remote.php/webdav</string>
+    <string name="storage_webdav_config_url_helper">Achte darauf, dass du hier die vollständige URL eingibst. Für Nextcloud z. B. hat sie die Form https://yourserver.com/remote.php/webdav</string>
     <string name="storage_webdav_config_user">Benutzername</string>
     <string name="storage_webdav_config_pass">Passwort</string>
     <string name="storage_webdav_config_button">WebDAV-Cloud verwenden</string>
