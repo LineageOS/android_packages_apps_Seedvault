@@ -1,4 +1,5 @@
 import com.google.protobuf.gradle.id
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /*
  * SPDX-FileCopyrightText: 2021 The Calyx Institute
@@ -9,7 +10,6 @@ plugins {
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.protobuf)
-    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.jetbrains.dokka)
 }
 
@@ -40,15 +40,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-        languageVersion = "1.8"
-        freeCompilerArgs += listOf(
-            "-opt-in=kotlin.RequiresOptIn",
-            "-Xexplicit-api=strict"
-        )
     }
 
     room {
@@ -89,6 +80,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+        optIn.add("kotlin.RequiresOptIn")
+    }
+    explicitApi()
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(libs.bundles.kotlin)
@@ -105,7 +104,7 @@ dependencies {
     implementation(libs.google.protobuf.javalite)
     implementation(libs.squareup.okio)
 
-    ksp(group = "androidx.room", name = "room-compiler", version = libs.versions.room.get())
+    ksp("androidx.room:room-compiler:${libs.versions.room.get()}")
     lintChecks(libs.thirdegg.lint.rules)
     testImplementation(libs.junit4)
     testImplementation(libs.mockk)
